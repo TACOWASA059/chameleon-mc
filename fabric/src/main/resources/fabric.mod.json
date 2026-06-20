@@ -1,0 +1,31 @@
+{
+    "schemaVersion": 1,
+    "id": "chameleon",
+    "version": "${version}",
+    "name": "${mod_name}",
+    "description": "${description}",
+    "authors": [
+        "${mod_author}"
+    ],
+    "contact": {},
+    "license": "${license}",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "com.github.tacowasa059.chameleon.ChameleonFabric"
+        ],
+        "client": [
+            "com.github.tacowasa059.chameleon.client.ChameleonFabricClient"
+        ]
+    },
+    "mixins": [
+        "chameleon.mixins.json",
+        "chameleon.fabric.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=0.14",
+        "fabric-api": "*",
+        "minecraft": "${minecraft_version}",
+        "java": ">=17"
+    }
+}
