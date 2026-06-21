@@ -7,8 +7,10 @@ import com.github.tacowasa059.chameleon.skin.SkinPersistence;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.IExtensionPoint;
@@ -50,5 +52,19 @@ public class Chameleon {
     @SubscribeEvent
     public void onServerStarted(ServerStartedEvent event) {
         SkinPersistence.load(event.getServer());
+    }
+
+    private int flushCounter;
+
+    @SubscribeEvent
+    public void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END && ++flushCounter % 100 == 0) {
+            SkinPersistence.flush(); // batch queued skin writes every ~5s
+        }
+    }
+
+    @SubscribeEvent
+    public void onServerStopping(ServerStoppingEvent event) {
+        SkinPersistence.flush(); // write anything still queued before shutdown
     }
 }

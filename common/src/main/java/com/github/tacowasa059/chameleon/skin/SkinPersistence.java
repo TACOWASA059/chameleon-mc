@@ -7,15 +7,26 @@ import net.minecraft.world.level.storage.LevelResource;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
  * Persists the server-side {@link SkinStore} to the world save so painted skins
  * survive a server (or single-player world) restart. One raw {@code <uuid>.skin}
  * file per player under {@code <world>/chameleon/skins/}.
+ *
+ * <p>Writes are DEBOUNCED: {@link #save} only queues the latest bytes per player;
+ * {@link #flush} actually writes (called on a slow server tick and on shutdown).
+ * This collapses a burst of edits from many players into one disk write each
+ * instead of a write per stroke.
  */
 public final class SkinPersistence {
+
+    private static final Map<UUID, byte[]> PENDING = new ConcurrentHashMap<>();
+    private static MinecraftServer pendingServer;
 
     private SkinPersistence() {
     }
@@ -50,6 +61,7 @@ public final class SkinPersistence {
 
     /** Remove a player's saved skin file (they reverted to their default skin). */
     public static void delete(MinecraftServer server, UUID id) {
+        PENDING.remove(id);
         if (server == null) {
             return;
         }
@@ -60,17 +72,38 @@ public final class SkinPersistence {
         }
     }
 
-    /** Write one player's skin to disk. Call whenever the store changes. */
+    /** Queue one player's skin for writing (latest wins). Actual write happens in {@link #flush}. */
     public static void save(MinecraftServer server, UUID id, byte[] data) {
         if (server == null) {
             return;
         }
+        pendingServer = server;
+        PENDING.put(id, data);
+    }
+
+    /** Write all queued skins to disk. Call on a slow server tick and on shutdown. */
+    public static void flush() {
+        MinecraftServer server = pendingServer;
+        if (server == null || PENDING.isEmpty()) {
+            return;
+        }
+        Path d = dir(server);
         try {
-            Path d = dir(server);
             Files.createDirectories(d);
-            Files.write(d.resolve(id.toString() + ".skin"), data);
         } catch (IOException e) {
-            Constants.LOG.warn("Failed to save skin for {}: {}", id, e.toString());
+            Constants.LOG.warn("Failed to create skins dir: {}", e.toString());
+            return;
+        }
+        for (UUID id : new ArrayList<>(PENDING.keySet())) {
+            byte[] data = PENDING.remove(id);
+            if (data == null) {
+                continue;
+            }
+            try {
+                Files.write(d.resolve(id.toString() + ".skin"), data);
+            } catch (IOException e) {
+                Constants.LOG.warn("Failed to save skin for {}: {}", id, e.toString());
+            }
         }
     }
 }

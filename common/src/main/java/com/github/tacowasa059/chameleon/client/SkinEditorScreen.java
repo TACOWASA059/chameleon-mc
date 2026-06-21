@@ -1148,7 +1148,7 @@ public class SkinEditorScreen extends Screen {
         ChameleonSkin skin = new ChameleonSkin(pixels.clone(), slim);
         ClientSkins.setLocal(uuid, skin);
         SelfSkin.save(skin);            // keep it client-side (works without a server)
-        ClientNetwork.sendSkin(skin.toBytes()); // and share it if connected
+        ClientNetwork.queueSkin(skin.toBytes()); // share it (debounced) if connected
     }
 
     /** Default canvas: an opaque white body, so a skin is never fully transparent. */
@@ -1171,6 +1171,7 @@ public class SkinEditorScreen extends Screen {
     @Override
     public void onClose() {
         syncSkin();
+        ClientNetwork.flush(); // send the final skin immediately on close
         PaintPalette.save();
         this.minecraft.setScreen(null);
     }

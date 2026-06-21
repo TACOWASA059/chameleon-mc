@@ -43,6 +43,7 @@ public final class ChameleonClient {
     public static void clientTick() {
         Minecraft mc = Minecraft.getInstance();
         ClientNetwork.refreshServerHasMod(); // keep the in-world gate current
+        ClientNetwork.tick();                // flush debounced skin sends
         boolean inWorld = mc.player != null && mc.getConnection() != null;
         if (inWorld && !wasInWorld) {
             SelfSkin.applyLocal();      // editor & (if modded) in-world get the saved skin

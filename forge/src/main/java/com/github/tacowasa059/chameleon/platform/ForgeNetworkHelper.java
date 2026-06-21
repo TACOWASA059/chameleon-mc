@@ -16,6 +16,11 @@ public class ForgeNetworkHelper implements INetworkHelper {
 
     @Override
     public void broadcastSkin(MinecraftServer server, UUID owner, byte[] skinData) {
-        ForgePackets.sendToAll(owner, skinData);
+        // Skip the owner -- they already applied their own skin locally.
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            if (!p.getUUID().equals(owner)) {
+                ForgePackets.sendToPlayer(p, owner, skinData);
+            }
+        }
     }
 }

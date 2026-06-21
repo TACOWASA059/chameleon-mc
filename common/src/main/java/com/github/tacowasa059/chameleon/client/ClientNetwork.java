@@ -51,4 +51,36 @@ public final class ClientNetwork {
         }
         sender.accept(data);
     }
+
+    // Debounce outbound skin updates so a burst of strokes becomes at most one
+    // send per interval (a server full of painters won't get a packet per stroke).
+    private static final int SEND_INTERVAL = 10; // ~0.5s at 20 tps
+    private static byte[] pending;
+    private static int sinceSend = SEND_INTERVAL;
+
+    /** Queue the latest skin to send; only the newest is kept until it flushes. */
+    public static void queueSkin(byte[] data) {
+        pending = data;
+    }
+
+    /** Per client tick: send the queued skin at most once per interval. */
+    public static void tick() {
+        if (sinceSend < SEND_INTERVAL) {
+            sinceSend++;
+        }
+        if (pending != null && sinceSend >= SEND_INTERVAL) {
+            flush();
+        }
+    }
+
+    /** Send the queued skin immediately (e.g. when closing a paint screen). */
+    public static void flush() {
+        if (pending == null) {
+            return;
+        }
+        byte[] data = pending;
+        pending = null;
+        sinceSend = 0;
+        sendSkin(data);
+    }
 }

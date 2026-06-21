@@ -19,8 +19,11 @@ public class FabricNetworkHelper implements INetworkHelper {
 
     @Override
     public void broadcastSkin(MinecraftServer server, UUID owner, byte[] skinData) {
+        // Skip the owner -- they already applied their own skin locally.
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-            ServerPlayNetworking.send(p, ChameleonNetwork.SYNC_SKIN, write(owner, skinData));
+            if (!p.getUUID().equals(owner)) {
+                ServerPlayNetworking.send(p, ChameleonNetwork.SYNC_SKIN, write(owner, skinData));
+            }
         }
     }
 

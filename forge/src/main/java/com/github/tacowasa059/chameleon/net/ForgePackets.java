@@ -44,10 +44,6 @@ public final class ForgePackets {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncSkinMsg(owner, data));
     }
 
-    public static void sendToAll(UUID owner, byte[] data) {
-        CHANNEL.send(PacketDistributor.ALL.noArg(), new SyncSkinMsg(owner, data));
-    }
-
     /** Client -> Server: a freshly painted skin. */
     public static final class UpdateSkinMsg {
         final byte[] data;

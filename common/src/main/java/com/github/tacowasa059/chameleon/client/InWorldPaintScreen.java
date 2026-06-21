@@ -585,7 +585,7 @@ public class InWorldPaintScreen extends Screen {
         ChameleonSkin skin = new ChameleonSkin(pixels.clone(), slim);
         ClientSkins.setLocal(uuid, skin);
         SelfSkin.save(skin);
-        ClientNetwork.sendSkin(skin.toBytes());
+        ClientNetwork.queueSkin(skin.toBytes()); // share it (debounced) if connected
     }
 
     private int[] whiteBodyPixels() {
@@ -631,6 +631,7 @@ public class InWorldPaintScreen extends Screen {
     @Override
     public void onClose() {
         syncSkin();
+        ClientNetwork.flush(); // send the final skin immediately on close
         PaintPalette.save();
         InWorldPaint.close();
         this.minecraft.setScreen(null);
