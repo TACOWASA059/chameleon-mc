@@ -1,5 +1,6 @@
 package com.github.tacowasa059.chameleon.client;
 
+import com.github.tacowasa059.chameleon.ChameleonConfig;
 import net.minecraft.client.Minecraft;
 
 import java.util.function.BooleanSupplier;
@@ -54,21 +55,31 @@ public final class ClientNetwork {
 
     // Debounce outbound skin updates so a burst of strokes becomes at most one
     // send per interval (a server full of painters won't get a packet per stroke).
-    private static final int SEND_INTERVAL = 10; // ~0.5s at 20 tps
+    // The interval is configurable (ChameleonConfig.sendIntervalTicks).
     private static byte[] pending;
-    private static int sinceSend = SEND_INTERVAL;
+    private static int sinceSend = Integer.MAX_VALUE; // start "ready" so the first edit goes out promptly
+    private static int serverSendInterval = -1;       // server-provided override (-1 = use local config)
 
     /** Queue the latest skin to send; only the newest is kept until it flushes. */
     public static void queueSkin(byte[] data) {
         pending = data;
     }
 
+    /** The connected server told us which send interval to use (takes precedence). */
+    public static void applyServerSendInterval(int ticks) {
+        serverSendInterval = Math.max(1, ticks);
+    }
+
     /** Per client tick: send the queued skin at most once per interval. */
     public static void tick() {
-        if (sinceSend < SEND_INTERVAL) {
+        if (Minecraft.getInstance().getConnection() == null) {
+            serverSendInterval = -1; // disconnected -> fall back to the local config value
+        }
+        int interval = serverSendInterval > 0 ? serverSendInterval : ChameleonConfig.sendIntervalTicks;
+        if (sinceSend < interval) {
             sinceSend++;
         }
-        if (pending != null && sinceSend >= SEND_INTERVAL) {
+        if (pending != null && sinceSend >= interval) {
             flush();
         }
     }

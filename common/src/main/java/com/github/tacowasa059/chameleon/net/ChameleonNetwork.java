@@ -1,11 +1,13 @@
 package com.github.tacowasa059.chameleon.net;
 
+import com.github.tacowasa059.chameleon.ChameleonConfig;
 import com.github.tacowasa059.chameleon.Constants;
 import com.github.tacowasa059.chameleon.platform.Services;
 import com.github.tacowasa059.chameleon.skin.ChameleonSkin;
 import com.github.tacowasa059.chameleon.skin.SkinPersistence;
 import com.github.tacowasa059.chameleon.skin.SkinStore;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Map;
@@ -20,6 +22,7 @@ public final class ChameleonNetwork {
 
     public static final ResourceLocation UPDATE_SKIN = new ResourceLocation(Constants.MOD_ID, "update_skin"); // C -> S
     public static final ResourceLocation SYNC_SKIN = new ResourceLocation(Constants.MOD_ID, "sync_skin");     // S -> C
+    public static final ResourceLocation SYNC_CONFIG = new ResourceLocation(Constants.MOD_ID, "sync_config"); // S -> C
 
     public static final int MAX_BYTES = ChameleonSkin.BYTES;
 
@@ -57,8 +60,17 @@ public final class ChameleonNetwork {
 
     /** Called when a player joins: send them every known skin so they render correctly. */
     public static void onPlayerJoin(ServerPlayer player) {
+        // Hand the client the server's send interval so it uses the server's policy.
+        Services.NETWORK.sendConfigToClient(player, ChameleonConfig.sendIntervalTicks);
         for (Map.Entry<UUID, byte[]> e : SkinStore.all().entrySet()) {
             Services.NETWORK.sendSkinToClient(player, e.getKey(), e.getValue());
+        }
+    }
+
+    /** Push the current send interval to every connected client (after a command change). */
+    public static void broadcastConfig(MinecraftServer server, int sendIntervalTicks) {
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            Services.NETWORK.sendConfigToClient(p, sendIntervalTicks);
         }
     }
 }

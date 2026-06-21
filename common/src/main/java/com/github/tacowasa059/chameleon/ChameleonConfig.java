@@ -1,0 +1,106 @@
+package com.github.tacowasa059.chameleon;
+
+import com.github.tacowasa059.chameleon.platform.Services;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Properties;
+
+/**
+ * Tiny cross-loader config (a {@code config/chameleon.properties} file) for the two
+ * debounce intervals. Loaded once at startup ({@link ChameleonMod#init()}); written
+ * with defaults if missing. Values are in ticks (20 ticks = 1 second).
+ *
+ * <p>Can also be changed at runtime with the {@code /chameleon} command (which
+ * persists the file).
+ */
+public final class ChameleonConfig {
+
+    /** Client: minimum ticks between skin uploads while painting (debounce). */
+    public static int sendIntervalTicks = 10;   // ~0.5s
+    /** Server: ticks between batched skin saves to disk. */
+    public static int saveIntervalTicks = 100;  // ~5s
+
+    private static boolean loaded;
+
+    private ChameleonConfig() {
+    }
+
+    private static Path path() {
+        return Services.PLATFORM.getConfigDir().resolve("chameleon.properties");
+    }
+
+    /** Load once at startup (writes defaults if the file is missing). */
+    public static void load() {
+        if (loaded) {
+            return;
+        }
+        loaded = true;
+        readFrom(path());
+    }
+
+    /** Re-read the file (for the {@code /chameleon reload} command). */
+    public static void reload() {
+        readFrom(path());
+    }
+
+    private static void readFrom(Path p) {
+        try {
+            if (!Files.exists(p)) {
+                save(); // first run: write the defaults
+                return;
+            }
+            Properties props = new Properties();
+            try (InputStream in = Files.newInputStream(p)) {
+                props.load(in);
+            }
+            sendIntervalTicks = readInt(props, "sendIntervalTicks", sendIntervalTicks);
+            saveIntervalTicks = readInt(props, "saveIntervalTicks", saveIntervalTicks);
+        } catch (Exception e) {
+            Constants.LOG.warn("Failed to load chameleon config, using current values: {}", e.toString());
+        }
+    }
+
+    /** Set the server save interval and persist (used by the command). */
+    public static void setSaveInterval(int ticks) {
+        saveIntervalTicks = Math.max(1, ticks);
+        save();
+    }
+
+    /** Set the client send interval and persist (used by the command). */
+    public static void setSendInterval(int ticks) {
+        sendIntervalTicks = Math.max(1, ticks);
+        save();
+    }
+
+    private static int readInt(Properties props, String key, int def) {
+        String v = props.getProperty(key);
+        if (v != null) {
+            try {
+                return Math.max(1, Integer.parseInt(v.trim())); // never below 1 tick
+            } catch (NumberFormatException ignored) {
+                // fall through to default
+            }
+        }
+        return def;
+    }
+
+    public static void save() {
+        try {
+            Path p = path();
+            Files.createDirectories(p.getParent());
+            Properties props = new Properties();
+            props.setProperty("sendIntervalTicks", Integer.toString(sendIntervalTicks));
+            props.setProperty("saveIntervalTicks", Integer.toString(saveIntervalTicks));
+            try (OutputStream out = Files.newOutputStream(p)) {
+                props.store(out, "Chameleon config. All values in ticks (20 ticks = 1 second, minimum 1).\n"
+                        + "sendIntervalTicks: client - min ticks between skin uploads while painting.\n"
+                        + "saveIntervalTicks: server - ticks between batched skin saves to disk.");
+            }
+        } catch (Exception e) {
+            Constants.LOG.warn("Failed to write chameleon config: {}", e.toString());
+        }
+    }
+}

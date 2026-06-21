@@ -7,6 +7,7 @@ import com.github.tacowasa059.chameleon.skin.SkinPersistence;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
@@ -54,12 +55,17 @@ public class Chameleon {
         SkinPersistence.load(event.getServer());
     }
 
+    @SubscribeEvent
+    public void onRegisterCommands(RegisterCommandsEvent event) {
+        ChameleonCommand.register(event.getDispatcher());
+    }
+
     private int flushCounter;
 
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && ++flushCounter % 100 == 0) {
-            SkinPersistence.flush(); // batch queued skin writes every ~5s
+        if (event.phase == TickEvent.Phase.END && ++flushCounter % ChameleonConfig.saveIntervalTicks == 0) {
+            SkinPersistence.flush(); // batch queued skin writes (interval is configurable)
         }
     }
 

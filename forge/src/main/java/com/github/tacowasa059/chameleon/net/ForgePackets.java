@@ -1,6 +1,7 @@
 package com.github.tacowasa059.chameleon.net;
 
 import com.github.tacowasa059.chameleon.Constants;
+import com.github.tacowasa059.chameleon.client.ClientNetwork;
 import com.github.tacowasa059.chameleon.client.ClientSkins;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -34,6 +35,7 @@ public final class ForgePackets {
         int i = 0;
         CHANNEL.registerMessage(i++, UpdateSkinMsg.class, UpdateSkinMsg::encode, UpdateSkinMsg::decode, UpdateSkinMsg::handle);
         CHANNEL.registerMessage(i++, SyncSkinMsg.class, SyncSkinMsg::encode, SyncSkinMsg::decode, SyncSkinMsg::handle);
+        CHANNEL.registerMessage(i++, SyncConfigMsg.class, SyncConfigMsg::encode, SyncConfigMsg::decode, SyncConfigMsg::handle);
     }
 
     public static void sendToServer(byte[] data) {
@@ -42,6 +44,10 @@ public final class ForgePackets {
 
     public static void sendToPlayer(ServerPlayer player, UUID owner, byte[] data) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncSkinMsg(owner, data));
+    }
+
+    public static void sendConfigToPlayer(ServerPlayer player, int sendIntervalTicks) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncConfigMsg(sendIntervalTicks));
     }
 
     /** Client -> Server: a freshly painted skin. */
@@ -90,6 +96,30 @@ public final class ForgePackets {
             NetworkEvent.Context ctx = ctxSup.get();
             ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
                     () -> () -> ClientSkins.receiveSync(m.owner, m.data)));
+            ctx.setPacketHandled(true);
+        }
+    }
+
+    /** Server -> Client: the send interval the server wants clients to use. */
+    public static final class SyncConfigMsg {
+        final int sendIntervalTicks;
+
+        SyncConfigMsg(int sendIntervalTicks) {
+            this.sendIntervalTicks = sendIntervalTicks;
+        }
+
+        static void encode(SyncConfigMsg m, FriendlyByteBuf b) {
+            b.writeVarInt(m.sendIntervalTicks);
+        }
+
+        static SyncConfigMsg decode(FriendlyByteBuf b) {
+            return new SyncConfigMsg(b.readVarInt());
+        }
+
+        static void handle(SyncConfigMsg m, Supplier<NetworkEvent.Context> ctxSup) {
+            NetworkEvent.Context ctx = ctxSup.get();
+            ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                    () -> () -> ClientNetwork.applyServerSendInterval(m.sendIntervalTicks)));
             ctx.setPacketHandled(true);
         }
     }

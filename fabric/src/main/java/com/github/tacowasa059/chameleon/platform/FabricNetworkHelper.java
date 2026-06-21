@@ -27,6 +27,13 @@ public class FabricNetworkHelper implements INetworkHelper {
         }
     }
 
+    @Override
+    public void sendConfigToClient(ServerPlayer target, int sendIntervalTicks) {
+        FriendlyByteBuf buf = PacketByteBufs.create();
+        buf.writeVarInt(sendIntervalTicks);
+        ServerPlayNetworking.send(target, ChameleonNetwork.SYNC_CONFIG, buf);
+    }
+
     private static FriendlyByteBuf write(UUID owner, byte[] data) {
         FriendlyByteBuf buf = PacketByteBufs.create();
         buf.writeUUID(owner);

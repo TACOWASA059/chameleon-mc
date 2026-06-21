@@ -23,4 +23,9 @@ public class ForgeNetworkHelper implements INetworkHelper {
             }
         }
     }
+
+    @Override
+    public void sendConfigToClient(ServerPlayer target, int sendIntervalTicks) {
+        ForgePackets.sendConfigToPlayer(target, sendIntervalTicks);
+    }
 }

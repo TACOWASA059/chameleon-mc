@@ -13,5 +13,6 @@ public final class ChameleonMod {
     public static void init() {
         Constants.LOG.info("Chameleon initializing on {} ({})",
                 Services.PLATFORM.getPlatformName(), Services.PLATFORM.getEnvironmentName());
+        ChameleonConfig.load();
     }
 }

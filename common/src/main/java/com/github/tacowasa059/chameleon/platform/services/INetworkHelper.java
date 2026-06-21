@@ -18,4 +18,7 @@ public interface INetworkHelper {
 
     /** Broadcast an owner's skin to every connected client. */
     void broadcastSkin(MinecraftServer server, UUID owner, byte[] skinData);
+
+    /** Tell one client the send interval (ticks) the server wants it to use. */
+    void sendConfigToClient(ServerPlayer target, int sendIntervalTicks);
 }

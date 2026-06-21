@@ -132,6 +132,26 @@ So your skin is **data that belongs to your client** — it follows you across r
 
 ---
 
+## Config
+
+`config/chameleon.properties` (auto-created on first launch) lets you tune the network debounce intervals. Values are in **ticks (20 ticks = 1 second, minimum 1)**.
+
+- `sendIntervalTicks` … client: minimum ticks between skin uploads while painting (default `10` ≈ 0.5s). **While connected to a server that has the mod, the server's value is used** (the local value is the fallback for singleplayer / non-mod servers).
+- `saveIntervalTicks` … server: ticks between batched skin saves to disk (default `100` ≈ 5s).
+
+On a busy server, raise these to lower how often skins are sent / saved.
+
+### Commands (OP / permission level 2)
+
+Change them at runtime on a server; the change is also written back to the config file.
+
+- `/chameleon` … show the current values
+- `/chameleon saveinterval <ticks>` … set the server save interval
+- `/chameleon sendinterval <ticks>` … set the send interval (**pushed to all connected clients**)
+- `/chameleon reload` … re-read the config file
+
+---
+
 ## Where data is stored
 
 - Client (inside the game directory, e.g. under `.minecraft`)

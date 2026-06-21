@@ -36,6 +36,12 @@ public class ChameleonFabricClient implements ClientModInitializer {
                     client.execute(() -> ClientSkins.receiveSync(owner, data));
                 });
 
+        ClientPlayNetworking.registerGlobalReceiver(ChameleonNetwork.SYNC_CONFIG,
+                (client, handler, buf, responseSender) -> {
+                    int interval = buf.readVarInt();
+                    client.execute(() -> ClientNetwork.applyServerSendInterval(interval));
+                });
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> ChameleonClient.clientTick());
     }
 }
