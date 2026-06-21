@@ -30,6 +30,8 @@ public final class ChameleonForgeClient {
 
     private static void onRegisterKeys(RegisterKeyMappingsEvent event) {
         event.register(ChameleonClient.OPEN_EDITOR);
+        event.register(ChameleonClient.OPEN_INWORLD_PAINT);
+        event.register(ChameleonClient.TOGGLE_GUIDE);
     }
 
     private static void onClientTick(TickEvent.ClientTickEvent event) {

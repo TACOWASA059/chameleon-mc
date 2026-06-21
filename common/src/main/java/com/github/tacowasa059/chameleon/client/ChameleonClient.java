@@ -19,6 +19,20 @@ public final class ChameleonClient {
             GLFW.GLFW_KEY_K,
             CATEGORY);
 
+    public static final KeyMapping OPEN_INWORLD_PAINT = new KeyMapping(
+            "key.chameleon.inworld_paint",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_N,
+            CATEGORY);
+
+    // Used only inside the in-world paint screen (checked via matches there), but
+    // registered so it shows up in Controls and can be rebound.
+    public static final KeyMapping TOGGLE_GUIDE = new KeyMapping(
+            "key.chameleon.toggle_guide",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_G,
+            CATEGORY);
+
     private static boolean wasInWorld = false;
     private static boolean uploadedThisServer = false;
 
@@ -42,6 +56,11 @@ public final class ChameleonClient {
 
         while (OPEN_EDITOR.consumeClick()) {
             openEditor();
+        }
+        while (OPEN_INWORLD_PAINT.consumeClick()) {
+            if (mc.player != null && mc.screen == null) {
+                InWorldPaint.open();
+            }
         }
     }
 

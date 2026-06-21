@@ -1,6 +1,10 @@
 {
     "key.categories.chameleon": "Chameleon",
     "key.chameleon.open_editor": "Open Skin Editor",
+    "key.chameleon.inworld_paint": "Paint Directly In-World",
+    "key.chameleon.toggle_guide": "Toggle Paint Guide (in Direct Paint)",
+    "screen.chameleon.inworld": "Direct Paint",
+    "screen.chameleon.inworld.hint": "Left-drag: paint  |  Right-drag: rotate camera  |  Wheel: zoom  |  Ctrl+Z: undo  |  Esc: exit",
     "screen.chameleon.editor": "Skin Editor",
     "screen.chameleon.hint": "Paint on the 2D map or 3D model (synced)  |  Right-drag 3D: rotate  |  Scroll: zoom  |  Ctrl+Z: undo",
     "editor.chameleon.tools": "Tools",

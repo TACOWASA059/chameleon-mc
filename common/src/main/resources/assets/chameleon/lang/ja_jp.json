@@ -1,6 +1,10 @@
 {
     "key.categories.chameleon": "カメレオン",
     "key.chameleon.open_editor": "スキンエディタを開く",
+    "key.chameleon.inworld_paint": "ワールドで直接ペイント",
+    "key.chameleon.toggle_guide": "ペイントガイド枠の表示(直接ペイント中)",
+    "screen.chameleon.inworld": "直接ペイント",
+    "screen.chameleon.inworld.hint": "左ドラッグ:塗る  |  右ドラッグ:カメラ回転  |  ホイール:ズーム  |  Ctrl+Z:戻す  |  Esc:終了",
     "screen.chameleon.editor": "スキンエディタ",
     "screen.chameleon.hint": "2Dマップ/3Dモデルどちらでも描画(同期)  |  3D右ドラッグ:回転  |  ホイール:ズーム  |  Ctrl+Z:戻す",
     "editor.chameleon.tools": "ツール",

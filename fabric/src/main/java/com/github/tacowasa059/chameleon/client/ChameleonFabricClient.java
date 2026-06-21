@@ -15,6 +15,8 @@ public class ChameleonFabricClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         KeyBindingHelper.registerKeyBinding(ChameleonClient.OPEN_EDITOR);
+        KeyBindingHelper.registerKeyBinding(ChameleonClient.OPEN_INWORLD_PAINT);
+        KeyBindingHelper.registerKeyBinding(ChameleonClient.TOGGLE_GUIDE);
 
         // Does the connected server speak our channel (i.e. have the mod)?
         ClientNetwork.setModCheck(() -> ClientPlayNetworking.canSend(ChameleonNetwork.UPDATE_SKIN));

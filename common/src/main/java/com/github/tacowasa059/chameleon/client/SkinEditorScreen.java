@@ -23,9 +23,6 @@ import net.minecraft.resources.ResourceLocation;
 import org.joml.Matrix4f;
 import org.lwjgl.glfw.GLFW;
 
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -112,6 +109,7 @@ public class SkinEditorScreen extends Screen {
     private static final Deque<int[]> REDO = new ArrayDeque<>();
 
     private int tool = T_PEN;
+    private int prevTool = T_PEN; // tool to return to after a one-shot eyedrop
     private int brushSize = 1;
     private boolean mirror = false;
     private boolean overlay = true;
@@ -119,12 +117,8 @@ public class SkinEditorScreen extends Screen {
     private boolean grid = true;
     private boolean shapeFill = true;
 
-    // Colors/palette/history are STATIC so they persist across editor opens.
-    private static int primary = 0xFF000000;
-    private static int secondary = 0xFFFFFFFF;
-    private static int activeSwatch = 0; // 0 = primary, 1 = secondary
-    private static final Deque<Integer> history = new ArrayDeque<>();
-    private static boolean prefsLoaded = false;
+    // Working colours + history are SHARED with the in-world paint mode (PaintPalette).
+    private static final Deque<Integer> history = PaintPalette.COLORS;
 
     // 3D camera + region (front faces the viewer at yaw 0)
     private float yaw = 0.5f, pitch = 0.0f, zoom = 7f, cx3, cy3;
@@ -136,6 +130,7 @@ public class SkinEditorScreen extends Screen {
     private boolean rotating, painting, shaping, pickerActive, paintOn2d;
     private int sx, sy, curx, cury; // shape start/current texel
     private double lastMouseX, lastMouseY;
+    private int pickHover; // eyedropper: screen colour under the cursor (read each frame)
 
     private static final int POSE_WALK = 4;
     private int poseIndex = POSE_WALK;           // default pose = walk
@@ -159,7 +154,7 @@ public class SkinEditorScreen extends Screen {
     public SkinEditorScreen() {
         super(Component.translatable("screen.chameleon.editor"));
         Minecraft mc = Minecraft.getInstance();
-        loadPrefs(); // restore colors + history from a previous session
+        PaintPalette.load(); // restore A/B colours + history (shared, persisted)
         this.uuid = mc.player != null ? mc.player.getUUID() : new UUID(0, 0);
         ChameleonSkin existing = ClientSkins.get(uuid);
         this.slim = existing != null ? existing.slim()
@@ -167,7 +162,7 @@ public class SkinEditorScreen extends Screen {
         this.geo = new SkinGeometry(slim);
         // No fully transparent skins: a new canvas starts as an opaque white body.
         this.pixels = existing != null ? existing.raw().clone() : whiteBodyPixels();
-        picker.setFromArgb(primary);
+        picker.setFromArgb(PaintPalette.primary);
     }
 
     @Override
@@ -185,7 +180,7 @@ public class SkinEditorScreen extends Screen {
 
         hexField = new EditBox(this.font, px, 22 + picker.height() + 4, picker.width(), 14, Component.literal("hex"));
         hexField.setMaxLength(7);
-        hexField.setValue("#" + ColorUtil.toHex(primary));
+        hexField.setValue("#" + ColorUtil.toHex(PaintPalette.primary));
         hexField.setResponder(this::onHexChanged);
         addRenderableWidget(hexField);
 
@@ -272,6 +267,16 @@ public class SkinEditorScreen extends Screen {
 
         super.render(g, mouseX, mouseY, partialTick);
         drawTooltips(g, mouseX, mouseY);
+
+        // Eyedropper reads the composited screen, so sample at the very end (after
+        // the 2D map / 3D model have been drawn). flush() rasterises the still-
+        // batched GUI draws into the framebuffer first, or the read would miss them.
+        if (tool == T_PICK) {
+            g.flush();
+            pickHover = ScreenColor.readPixel(mouseX, mouseY);
+        } else {
+            pickHover = 0;
+        }
     }
 
     /** Hover help for the option toggles, so Lock/Grid/etc. explain themselves. */
@@ -358,8 +363,8 @@ public class SkinEditorScreen extends Screen {
         picker.render(g);
         // A/B swatches
         int swY = 22 + picker.height() + 4 + 14 + 4;
-        drawSwatch(g, px, swY, "A", primary, activeSwatch == 0);
-        drawSwatch(g, px + 62, swY, "B", secondary, activeSwatch == 1);
+        drawSwatch(g, px, swY, "A", PaintPalette.primary, PaintPalette.activeSwatch == 0);
+        drawSwatch(g, px + 62, swY, "B", PaintPalette.secondary, PaintPalette.activeSwatch == 1);
         // recent color history
         int hisY = swY + 28;
         g.drawString(this.font, Component.translatable("editor.chameleon.history"), px, hisY - 9, 0xFF999999, false);
@@ -648,6 +653,17 @@ public class SkinEditorScreen extends Screen {
             return true;
         }
 
+        // Eyedropper now samples the on-screen colour (the displayed 2D map, the
+        // shaded 3D model, anything rendered) instead of only the raw skin pixel.
+        if (button == 0 && tool == T_PICK && (in2dRegion(mx, my) || in3dRegion(mx, my))) {
+            int c = pickHover != 0 ? pickHover : ScreenColor.readPixel(mx, my);
+            if (c != 0) {
+                setActiveColor(c);
+                tool = prevTool; // one-shot: return to the previous tool after picking
+            }
+            return true;
+        }
+
         // surfaces
         int[] t = null;
         boolean on2d = false;
@@ -676,6 +692,7 @@ public class SkinEditorScreen extends Screen {
                 rotating = true;
             } else if (t != null && tool == T_PICK) {
                 sample(t[0], t[1]);
+                tool = prevTool;
             }
             return true;
         }
@@ -778,7 +795,7 @@ public class SkinEditorScreen extends Screen {
         boolean committed = painting || shaping;
         if (shaping) {
             snapshot();
-            pushHistory(tool == T_GRADIENT ? primary : activeColor());
+            pushHistory(tool == T_GRADIENT ? PaintPalette.primary : activeColor());
             applyShape(pixels);
             shaping = false;
         }
@@ -830,6 +847,9 @@ public class SkinEditorScreen extends Screen {
             int rx = 8 + (i % 2) * 50;
             int ry = toolsY + (i / 2) * 20;
             if (in(mx, my, rx, ry, 48, 18)) {
+                if (i == T_PICK && tool != T_PICK) {
+                    prevTool = tool; // remember where to return after the eyedrop
+                }
                 tool = i;
                 return true;
             }
@@ -913,13 +933,13 @@ public class SkinEditorScreen extends Screen {
         int px = this.width - RW + 4;
         int swY = 22 + picker.height() + 4 + 14 + 4;
         if (in(mx, my, px, swY, 56, 16)) {
-            activeSwatch = 0;
-            picker.setFromArgb(primary);
+            PaintPalette.activeSwatch = 0;
+            picker.setFromArgb(PaintPalette.primary);
             return true;
         }
         if (in(mx, my, px + 62, swY, 56, 16)) {
-            activeSwatch = 1;
-            picker.setFromArgb(secondary);
+            PaintPalette.activeSwatch = 1;
+            picker.setFromArgb(PaintPalette.secondary);
             return true;
         }
         return false;
@@ -1016,7 +1036,7 @@ public class SkinEditorScreen extends Screen {
             case T_LINE -> PaintOps.line(buf, sx, sy, curx, cury, activeColor(), brushSize, lockAlpha);
             case T_RECT -> PaintOps.rect(buf, sx, sy, curx, cury, activeColor(), shapeFill, lockAlpha);
             case T_ELLIPSE -> PaintOps.ellipse(buf, sx, sy, curx, cury, activeColor(), shapeFill, lockAlpha);
-            case T_GRADIENT -> PaintOps.gradient(buf, sx, sy, curx, cury, primary, secondary, lockAlpha);
+            case T_GRADIENT -> PaintOps.gradient(buf, sx, sy, curx, cury, PaintPalette.primary, PaintPalette.secondary, lockAlpha);
             default -> {
             }
         }
@@ -1031,9 +1051,9 @@ public class SkinEditorScreen extends Screen {
 
     // ---- color / history ----------------------------------------------------
 
-    /** Colour currently painted with: A (primary) or B (secondary) per the active swatch. */
+    /** Colour currently painted with: A (PaintPalette.primary) or B (PaintPalette.secondary) per the active swatch. */
     private int activeColor() {
-        return activeSwatch == 0 ? primary : secondary;
+        return PaintPalette.activeSwatch == 0 ? PaintPalette.primary : PaintPalette.secondary;
     }
 
     private void setActiveColor(int argb) {
@@ -1047,10 +1067,10 @@ public class SkinEditorScreen extends Screen {
      */
     private void setActiveColor(int argb, boolean updatePicker) {
         argb = argb | 0xFF000000;
-        if (activeSwatch == 0) {
-            primary = argb;
+        if (PaintPalette.activeSwatch == 0) {
+            PaintPalette.primary = argb;
         } else {
-            secondary = argb;
+            PaintPalette.secondary = argb;
         }
         if (updatePicker) {
             picker.setFromArgb(argb);
@@ -1063,12 +1083,7 @@ public class SkinEditorScreen extends Screen {
     }
 
     private void pushHistory(int color) {
-        color = color | 0xFF000000;
-        history.remove(color);
-        history.addFirst(color);
-        while (history.size() > 10) {
-            history.removeLast();
-        }
+        PaintPalette.push(color);
     }
 
     private void onHexChanged(String text) {
@@ -1077,10 +1092,10 @@ public class SkinEditorScreen extends Screen {
         }
         int c = ColorUtil.parseHex(text);
         if (c != -1) {
-            if (activeSwatch == 0) {
-                primary = c;
+            if (PaintPalette.activeSwatch == 0) {
+                PaintPalette.primary = c;
             } else {
-                secondary = c;
+                PaintPalette.secondary = c;
             }
             picker.setFromArgb(c);
         }
@@ -1156,7 +1171,7 @@ public class SkinEditorScreen extends Screen {
     @Override
     public void onClose() {
         syncSkin();
-        savePrefs();
+        PaintPalette.save();
         this.minecraft.setScreen(null);
     }
 
@@ -1216,54 +1231,6 @@ public class SkinEditorScreen extends Screen {
         } catch (Exception e) {
             Constants.LOG.warn("Failed to read default skin texture: {}", e.toString());
             return null;
-        }
-    }
-
-    private static Path prefsPath() {
-        return Minecraft.getInstance().gameDirectory.toPath().resolve("chameleon").resolve("editor.bin");
-    }
-
-    /** Restore primary/secondary colors and recent history (survives game restart). */
-    private static void loadPrefs() {
-        if (prefsLoaded) {
-            return;
-        }
-        prefsLoaded = true;
-        try {
-            Path p = prefsPath();
-            if (!Files.exists(p)) {
-                return;
-            }
-            ByteBuffer b = ByteBuffer.wrap(Files.readAllBytes(p));
-            if (b.remaining() < 12) {
-                return;
-            }
-            primary = b.getInt();
-            secondary = b.getInt();
-            int n = b.getInt();
-            history.clear();
-            for (int i = 0; i < n && b.remaining() >= 4; i++) {
-                history.addLast(b.getInt());
-            }
-        } catch (Exception e) {
-            Constants.LOG.warn("Failed to load editor prefs: {}", e.toString());
-        }
-    }
-
-    private static void savePrefs() {
-        try {
-            ByteBuffer b = ByteBuffer.allocate(12 + history.size() * 4);
-            b.putInt(primary);
-            b.putInt(secondary);
-            b.putInt(history.size());
-            for (int c : history) {
-                b.putInt(c);
-            }
-            Path p = prefsPath();
-            Files.createDirectories(p.getParent());
-            Files.write(p, b.array());
-        } catch (Exception e) {
-            Constants.LOG.warn("Failed to save editor prefs: {}", e.toString());
         }
     }
 

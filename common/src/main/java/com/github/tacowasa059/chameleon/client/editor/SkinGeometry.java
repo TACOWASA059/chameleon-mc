@@ -387,7 +387,15 @@ public final class SkinGeometry {
      * map and bilerps the corners. Used to mirror 2D-map paint across x=0.
      */
     public static float[] pointAtTexel(Face f, int tx, int ty) {
-        float u = tx + 0.5f, v = ty + 0.5f;
+        return pointAtUV(f, tx + 0.5f, ty + 0.5f);
+    }
+
+    /**
+     * Model-space point at a continuous texel coordinate (u,v) on face {@code f}.
+     * Like {@link #pointAtTexel} but lets callers ask for a texel's corners
+     * (integer u,v) as well as its centre, e.g. to outline the exact texel cell.
+     */
+    public static float[] pointAtUV(Face f, float u, float v) {
         float u2 = f.uv[0][0], u1 = f.uv[1][0];
         float v1 = f.uv[0][1], v2 = f.uv[2][1];
         float a = Math.abs(u2 - u1) < 1e-4f ? 0f : (u2 - u) / (u2 - u1);

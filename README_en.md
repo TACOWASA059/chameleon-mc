@@ -9,6 +9,7 @@ Paint your pure-white body to blend into the scenery and hide from the seeker �
 - Loaders: **Forge / Fabric** (Fabric requires **Fabric API**)
 
 ![image](figure/img.png)
+![image](figure/img_1.png)
 ---
 
 ## Installation
@@ -72,7 +73,7 @@ Change the 3D preview pose to paint more easily or check the look. **This affect
 - An **HSV picker** (saturation/value box + hue bar) and **`#RRGGBB`** input.
 - **A / B swatches** … hold two colors. Click to switch the active one; you paint with it.
 - **History** … recently used colors. Click to reuse.
-- Colors (A/B and history) **persist across game restarts**.
+- Colors (A/B and history) are **shared with the in-world paint mode (below)** and **persist across game restarts**.
 
 ### Bookmarks
 
@@ -87,6 +88,29 @@ The right panel has **save slots with 3D thumbnails** of each skin.
 - **Export PNG** … save the current skin as a 64×64 PNG.
 - **Load default** … import your real Minecraft skin (your Mojang skin, or Steve/Alex) into the canvas so you can edit from it.
 - **Reset** … reset the canvas to an opaque white body.
+
+---
+
+## In-world direct paint (`N` key)
+
+Separate from the editor (`K`), this mode lets you **paint directly on your real body in the world**. You paint while seeing the actual scenery and lighting, which suits "chameleon"-style blending into your surroundings.
+
+- Open with the **`N` key** (default). It switches to third person and orbits the camera around your body.
+  - To rebind: `Options → Controls → Chameleon → Paint Directly In-World`.
+- You paint **in whatever pose you're currently in** (crouching, walking, etc.).
+
+| Action | Effect |
+|--------|--------|
+| Left-drag (on the body) | Paint with the selected tool |
+| Right-drag | Rotate the camera (orbit around you) |
+| Mouse wheel | Zoom |
+| `Ctrl+Z` / `Ctrl+Y` | Undo / Redo |
+| `G` | Toggle the guide outline (where clicks land) |
+| `Esc` | Exit |
+
+- The left panel has the tools (Pen / Erase / Fill / Eyedropper), brush, mirror, 2nd layer, HSV picker, A/B and history.
+- **The eyedropper samples the colour shown on screen** (a nearby block, etc.). It corrects for the current lighting, so the painted body blends into the surface you sampled.
+- **A/B colours and history are shared with the editor (`K`)** — a colour used in one shows up in the other, and both persist across restarts.
 
 ---
 
