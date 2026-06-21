@@ -344,6 +344,11 @@ public final class SkinGeometry {
     }
 
     public Pick texelAtPoint(float[] p, boolean[] showBase, boolean[] showOver) {
+        // Return the NEAREST matching face (smallest plane distance), not just the
+        // first -- where parts overlap (legs at the centre) or a base/overlay pair
+        // is coincident, the first hit can be the wrong face. 0.25 is the cap.
+        float bestDist = 0.25f;
+        Pick best = null;
         for (Face f : faces) {
             if (!shown(f, showBase, showOver)) {
                 continue;
@@ -369,16 +374,17 @@ public final class SkinGeometry {
                 float dd = recon[k] - p[k];
                 dist2 += dd * dd;
             }
-            if (dist2 > 0.25f) {
+            if (dist2 > bestDist) {
                 continue;
             }
-            a = Math.max(0, Math.min(1, a));
-            b = Math.max(0, Math.min(1, b));
-            float pu = (1 - a) * (1 - b) * f.uv[0][0] + a * (1 - b) * f.uv[1][0] + a * b * f.uv[2][0] + (1 - a) * b * f.uv[3][0];
-            float pv = (1 - a) * (1 - b) * f.uv[0][1] + a * (1 - b) * f.uv[1][1] + a * b * f.uv[2][1] + (1 - a) * b * f.uv[3][1];
-            return new Pick(clamp((int) Math.floor(pu)), clamp((int) Math.floor(pv)), p, f);
+            bestDist = dist2;
+            float ca = Math.max(0, Math.min(1, a));
+            float cb = Math.max(0, Math.min(1, b));
+            float pu = (1 - ca) * (1 - cb) * f.uv[0][0] + ca * (1 - cb) * f.uv[1][0] + ca * cb * f.uv[2][0] + (1 - ca) * cb * f.uv[3][0];
+            float pv = (1 - ca) * (1 - cb) * f.uv[0][1] + ca * (1 - cb) * f.uv[1][1] + ca * cb * f.uv[2][1] + (1 - ca) * cb * f.uv[3][1];
+            best = new Pick(clamp((int) Math.floor(pu)), clamp((int) Math.floor(pv)), p, f);
         }
-        return null;
+        return best;
     }
 
     /**

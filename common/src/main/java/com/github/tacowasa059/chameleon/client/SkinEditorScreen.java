@@ -1012,8 +1012,18 @@ public class SkinEditorScreen extends Screen {
         int color = tool == T_ERASER ? TRANSPARENT : activeColor();
         boolean lock = tool != T_ERASER && lockAlpha;
         dabClipped(tx, ty, color, lock, face);
-        if (mirror && modelPoint != null) {
-            SkinGeometry.Pick m = geo.texelAtPoint(new float[]{-modelPoint[0], modelPoint[1], modelPoint[2]}, showBase, showOver);
+        if (mirror && modelPoint != null && face != null) {
+            // Use the texel CENTRE (robust near face edges) and keep the mirror on
+            // the SAME layer as the painted face (base->base, overlay->overlay).
+            float[] mc = SkinGeometry.pointAtTexel(face, tx, ty);
+            boolean[] mb = new boolean[6];
+            boolean[] mo = new boolean[6];
+            if (face.overlay) {
+                System.arraycopy(showOver, 0, mo, 0, 6);
+            } else {
+                System.arraycopy(showBase, 0, mb, 0, 6);
+            }
+            SkinGeometry.Pick m = geo.texelAtPoint(new float[]{-mc[0], mc[1], mc[2]}, mb, mo);
             if (m != null) {
                 dabClipped(m.tx, m.ty, color, lock, m.face);
             }

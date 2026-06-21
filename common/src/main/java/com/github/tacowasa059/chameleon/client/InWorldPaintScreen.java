@@ -495,8 +495,10 @@ public class InWorldPaintScreen extends Screen {
         PaintOps.dab(pixels, hit.tx, hit.ty, c, brushSize, false, r[0], r[1], r[2], r[3]);
         if (mirror) {
             float[] mp = SkinGeometry.pointAtTexel(hit.face, hit.tx, hit.ty);
-            boolean[] showBase = {true, true, true, true, true, true};
-            boolean[] showOver = {overlay, overlay, overlay, overlay, overlay, overlay};
+            // Mirror stays on the SAME layer (base->base, overlay->overlay).
+            boolean ho = hit.face.overlay;
+            boolean[] showBase = {!ho, !ho, !ho, !ho, !ho, !ho};
+            boolean[] showOver = {ho, ho, ho, ho, ho, ho};
             SkinGeometry.Pick m = geo.texelAtPoint(new float[]{-mp[0], mp[1], mp[2]}, showBase, showOver);
             if (m != null) {
                 int[] mr = SkinGeometry.rectOf(m.face);
