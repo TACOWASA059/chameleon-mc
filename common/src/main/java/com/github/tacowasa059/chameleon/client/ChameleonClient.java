@@ -1,5 +1,6 @@
 package com.github.tacowasa059.chameleon.client;
 
+import com.github.tacowasa059.chameleon.ChameleonPose;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -33,6 +34,13 @@ public final class ChameleonClient {
             GLFW.GLFW_KEY_G,
             CATEGORY);
 
+    // Opens the radial pose wheel (visual camouflage poses).
+    public static final KeyMapping OPEN_POSE_WHEEL = new KeyMapping(
+            "key.chameleon.pose_wheel",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_R,
+            CATEGORY);
+
     private static boolean wasInWorld = false;
     private static boolean uploadedThisServer = false;
 
@@ -48,6 +56,7 @@ public final class ChameleonClient {
         if (inWorld && !wasInWorld) {
             SelfSkin.applyLocal();      // editor & (if modded) in-world get the saved skin
             uploadedThisServer = false;
+            ClientPoses.clear();        // server re-syncs current poses on join
         }
         if (inWorld && ClientNetwork.serverHasMod() && !uploadedThisServer) {
             SelfSkin.upload();          // share with others once the modded server is ready
@@ -55,12 +64,22 @@ public final class ChameleonClient {
         }
         wasInWorld = inWorld;
 
+        // Cancel a held visual pose by sneaking (like dismounting a horse).
+        if (inWorld && mc.options.keyShift.isDown() && ClientPoses.get(mc.player.getUUID()) != null) {
+            ClientPoses.choose(ChameleonPose.STAND);
+        }
+
         while (OPEN_EDITOR.consumeClick()) {
             openEditor();
         }
         while (OPEN_INWORLD_PAINT.consumeClick()) {
             if (mc.player != null && mc.screen == null) {
                 InWorldPaint.open();
+            }
+        }
+        while (OPEN_POSE_WHEEL.consumeClick()) {
+            if (mc.player != null && mc.screen == null && ClientNetwork.serverHasMod()) {
+                mc.setScreen(new PoseWheelScreen());
             }
         }
     }

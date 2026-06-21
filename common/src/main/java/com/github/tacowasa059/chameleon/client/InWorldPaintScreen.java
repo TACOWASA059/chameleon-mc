@@ -1,10 +1,12 @@
 package com.github.tacowasa059.chameleon.client;
 
+import com.github.tacowasa059.chameleon.Constants;
 import com.github.tacowasa059.chameleon.client.editor.ColorPicker;
 import com.github.tacowasa059.chameleon.client.editor.ColorUtil;
 import com.github.tacowasa059.chameleon.client.editor.PaintOps;
 import com.github.tacowasa059.chameleon.client.editor.SkinGeometry;
 import com.github.tacowasa059.chameleon.skin.ChameleonSkin;
+import net.minecraft.resources.ResourceLocation;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
@@ -112,6 +114,8 @@ public class InWorldPaintScreen extends Screen {
                 .bounds(4, by - 38, half, 16).build());
         addRenderableWidget(Button.builder(Component.translatable("button.chameleon.redo"), b -> doRedo())
                 .bounds(4 + half + 4, by - 38, half, 16).build());
+        addRenderableWidget(Button.builder(Component.translatable("button.chameleon.default"), b -> importDefaultSkin())
+                .bounds(4, by - 58, bw, 16).build());
     }
 
     // ---- rendering ----------------------------------------------------------
@@ -604,6 +608,65 @@ public class InWorldPaintScreen extends Screen {
             }
         }
         return p;
+    }
+
+    /** Load the player's REAL Minecraft skin into the canvas (revert toward default). */
+    private void importDefaultSkin() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) {
+            return;
+        }
+        // PlayerInfo.getSkinLocation() is the REAL skin (our mixin only overrides
+        // AbstractClientPlayer's getSkin*, not PlayerInfo's).
+        net.minecraft.client.multiplayer.PlayerInfo info =
+                mc.getConnection() != null ? mc.getConnection().getPlayerInfo(uuid) : null;
+        ResourceLocation loc;
+        boolean s;
+        if (info != null) {
+            loc = info.getSkinLocation();
+            s = "slim".equals(info.getModelName());
+        } else {
+            loc = mc.getSkinManager().getInsecureSkinLocation(mc.player.getGameProfile());
+            s = slim;
+        }
+        int[] px = readSkinTexture(loc);
+        if (px == null) {
+            return;
+        }
+        snapshot();
+        System.arraycopy(px, 0, pixels, 0, pixels.length);
+        if (s != slim) {
+            slim = s;
+            geo = new SkinGeometry(slim);
+        }
+        syncSkin();
+    }
+
+    /** Read a 64x64 skin texture back from the GPU into ARGB pixels. */
+    private static int[] readSkinTexture(ResourceLocation loc) {
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            net.minecraft.client.renderer.texture.AbstractTexture tex = mc.getTextureManager().getTexture(loc);
+            if (tex == null) {
+                return null;
+            }
+            tex.bind();
+            com.mojang.blaze3d.platform.NativeImage img = new com.mojang.blaze3d.platform.NativeImage(N, N, false);
+            img.downloadTexture(0, false);
+            int[] out = new int[N * N];
+            for (int y = 0; y < N; y++) {
+                for (int x = 0; x < N; x++) {
+                    int abgr = img.getPixelRGBA(x, y);
+                    int a = (abgr >>> 24) & 0xFF, b = (abgr >> 16) & 0xFF, g = (abgr >> 8) & 0xFF, r = abgr & 0xFF;
+                    out[y * N + x] = (a << 24) | (r << 16) | (g << 8) | b;
+                }
+            }
+            img.close();
+            return out;
+        } catch (Exception e) {
+            Constants.LOG.warn("Failed to read default skin texture: {}", e.toString());
+            return null;
+        }
     }
 
     private static boolean in(double mx, double my, int x, int y, int w, int h) {

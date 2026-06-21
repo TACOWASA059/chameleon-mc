@@ -21,6 +21,12 @@ public class ChameleonFabric implements ModInitializer {
                     server.execute(() -> ChameleonNetwork.serverReceiveUpdate(player, data));
                 });
 
+        ServerPlayNetworking.registerGlobalReceiver(ChameleonNetwork.SET_POSE,
+                (server, player, handler, buf, responseSender) -> {
+                    int poseId = buf.readVarInt();
+                    server.execute(() -> ChameleonNetwork.serverReceivePose(player, poseId));
+                });
+
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
                 ChameleonNetwork.onPlayerJoin(handler.player));
 

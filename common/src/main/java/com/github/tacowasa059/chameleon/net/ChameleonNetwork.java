@@ -1,15 +1,18 @@
 package com.github.tacowasa059.chameleon.net;
 
 import com.github.tacowasa059.chameleon.ChameleonConfig;
+import com.github.tacowasa059.chameleon.ChameleonPose;
 import com.github.tacowasa059.chameleon.Constants;
 import com.github.tacowasa059.chameleon.platform.Services;
 import com.github.tacowasa059.chameleon.skin.ChameleonSkin;
+import com.github.tacowasa059.chameleon.skin.PoseStore;
 import com.github.tacowasa059.chameleon.skin.SkinPersistence;
 import com.github.tacowasa059.chameleon.skin.SkinStore;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,6 +26,8 @@ public final class ChameleonNetwork {
     public static final ResourceLocation UPDATE_SKIN = new ResourceLocation(Constants.MOD_ID, "update_skin"); // C -> S
     public static final ResourceLocation SYNC_SKIN = new ResourceLocation(Constants.MOD_ID, "sync_skin");     // S -> C
     public static final ResourceLocation SYNC_CONFIG = new ResourceLocation(Constants.MOD_ID, "sync_config"); // S -> C
+    public static final ResourceLocation SET_POSE = new ResourceLocation(Constants.MOD_ID, "set_pose");       // C -> S
+    public static final ResourceLocation SYNC_POSE = new ResourceLocation(Constants.MOD_ID, "sync_pose");     // S -> C
 
     public static final int MAX_BYTES = ChameleonSkin.BYTES;
 
@@ -58,19 +63,53 @@ public final class ChameleonNetwork {
         Services.NETWORK.broadcastSkin(sender.getServer(), id, data);
     }
 
-    /** Called when a player joins: send them every known skin so they render correctly. */
+    /** Called when a player joins: hand them the config and every known skin + pose. */
     public static void onPlayerJoin(ServerPlayer player) {
-        // Hand the client the server's send interval so it uses the server's policy.
-        Services.NETWORK.sendConfigToClient(player, ChameleonConfig.sendIntervalTicks);
+        Services.NETWORK.sendConfigToClient(player, ChameleonConfig.sendIntervalTicks, ChameleonConfig.allowedPoseMask);
         for (Map.Entry<UUID, byte[]> e : SkinStore.all().entrySet()) {
             Services.NETWORK.sendSkinToClient(player, e.getKey(), e.getValue());
         }
+        for (Map.Entry<UUID, ChameleonPose> e : PoseStore.all().entrySet()) {
+            Services.NETWORK.sendPoseToClient(player, e.getKey(), e.getValue().ordinal());
+        }
     }
 
-    /** Push the current send interval to every connected client (after a command change). */
-    public static void broadcastConfig(MinecraftServer server, int sendIntervalTicks) {
+    /** Push the current config (send interval + allowed poses) to every client. */
+    public static void broadcastConfig(MinecraftServer server) {
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-            Services.NETWORK.sendConfigToClient(p, sendIntervalTicks);
+            Services.NETWORK.sendConfigToClient(p, ChameleonConfig.sendIntervalTicks, ChameleonConfig.allowedPoseMask);
+        }
+    }
+
+    /** Client chose a visual pose: validate against the allowed set, store, broadcast. */
+    public static void serverReceivePose(ServerPlayer sender, int poseId) {
+        if (sender == null) {
+            return;
+        }
+        ChameleonPose pose = ChameleonPose.byId(poseId);
+        if (pose.selectable() && (ChameleonConfig.allowedPoseMask & pose.bit()) == 0) {
+            return; // not allowed by the server config
+        }
+        UUID id = sender.getUUID();
+        PoseStore.put(id, pose);
+        broadcastPose(sender.getServer(), id, pose);
+    }
+
+    /** Send one player's pose to every connected client (including the owner). */
+    public static void broadcastPose(MinecraftServer server, UUID owner, ChameleonPose pose) {
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            Services.NETWORK.sendPoseToClient(p, owner, pose.ordinal());
+        }
+    }
+
+    /** Reset any player whose stored pose is no longer allowed (after a config change). */
+    public static void clearDisallowedPoses(MinecraftServer server) {
+        for (Map.Entry<UUID, ChameleonPose> e : new ArrayList<>(PoseStore.all().entrySet())) {
+            ChameleonPose pose = e.getValue();
+            if (pose.selectable() && (ChameleonConfig.allowedPoseMask & pose.bit()) == 0) {
+                PoseStore.put(e.getKey(), ChameleonPose.STAND); // removes
+                broadcastPose(server, e.getKey(), ChameleonPose.STAND);
+            }
         }
     }
 }

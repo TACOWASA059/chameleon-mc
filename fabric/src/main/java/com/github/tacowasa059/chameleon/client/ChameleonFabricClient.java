@@ -17,6 +17,7 @@ public class ChameleonFabricClient implements ClientModInitializer {
         KeyBindingHelper.registerKeyBinding(ChameleonClient.OPEN_EDITOR);
         KeyBindingHelper.registerKeyBinding(ChameleonClient.OPEN_INWORLD_PAINT);
         KeyBindingHelper.registerKeyBinding(ChameleonClient.TOGGLE_GUIDE);
+        KeyBindingHelper.registerKeyBinding(ChameleonClient.OPEN_POSE_WHEEL);
 
         // Does the connected server speak our channel (i.e. have the mod)?
         ClientNetwork.setModCheck(() -> ClientPlayNetworking.canSend(ChameleonNetwork.UPDATE_SKIN));
@@ -27,6 +28,14 @@ public class ChameleonFabricClient implements ClientModInitializer {
             FriendlyByteBuf buf = PacketByteBufs.create();
             buf.writeByteArray(data);
             ClientPlayNetworking.send(ChameleonNetwork.UPDATE_SKIN, buf);
+        });
+        ClientNetwork.setPoseSender(poseId -> {
+            if (!ClientNetwork.serverHasMod()) {
+                return;
+            }
+            FriendlyByteBuf buf = PacketByteBufs.create();
+            buf.writeVarInt(poseId);
+            ClientPlayNetworking.send(ChameleonNetwork.SET_POSE, buf);
         });
 
         ClientPlayNetworking.registerGlobalReceiver(ChameleonNetwork.SYNC_SKIN,
@@ -39,7 +48,18 @@ public class ChameleonFabricClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(ChameleonNetwork.SYNC_CONFIG,
                 (client, handler, buf, responseSender) -> {
                     int interval = buf.readVarInt();
-                    client.execute(() -> ClientNetwork.applyServerSendInterval(interval));
+                    int mask = buf.readVarInt();
+                    client.execute(() -> {
+                        ClientNetwork.applyServerSendInterval(interval);
+                        ClientPoses.setAllowed(mask);
+                    });
+                });
+
+        ClientPlayNetworking.registerGlobalReceiver(ChameleonNetwork.SYNC_POSE,
+                (client, handler, buf, responseSender) -> {
+                    UUID owner = buf.readUUID();
+                    int poseId = buf.readVarInt();
+                    client.execute(() -> ClientPoses.receive(owner, poseId));
                 });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> ChameleonClient.clientTick());

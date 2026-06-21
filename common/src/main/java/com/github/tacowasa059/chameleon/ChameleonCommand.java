@@ -2,11 +2,15 @@ package com.github.tacowasa059.chameleon;
 
 import com.github.tacowasa059.chameleon.net.ChameleonNetwork;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+
+import java.util.Locale;
 
 /**
  * {@code /chameleon} -- OP (level 2) command to view/change the config intervals at
@@ -40,23 +44,55 @@ public final class ChameleonCommand {
                                 .executes(ctx -> {
                                     ChameleonConfig.setSendInterval(IntegerArgumentType.getInteger(ctx, "ticks"));
                                     // Push it to every connected client so they actually use it.
-                                    ChameleonNetwork.broadcastConfig(ctx.getSource().getServer(), ChameleonConfig.sendIntervalTicks);
+                                    ChameleonNetwork.broadcastConfig(ctx.getSource().getServer());
                                     return report(ctx, "sendIntervalTicks set to " + ChameleonConfig.sendIntervalTicks
                                             + " (pushed to all clients)");
                                 })))
                 .then(Commands.literal("reload")
                         .executes(ctx -> {
                             ChameleonConfig.reload();
+                            // Re-push config (send interval + allowed poses) to all clients.
+                            ChameleonNetwork.broadcastConfig(ctx.getSource().getServer());
+                            ChameleonNetwork.clearDisallowedPoses(ctx.getSource().getServer());
                             return report(ctx, "Chameleon config reloaded (saveIntervalTicks="
-                                    + ChameleonConfig.saveIntervalTicks + ")");
-                        })));
+                                    + ChameleonConfig.saveIntervalTicks + ", allowedPoses pushed)");
+                        }))
+                .then(Commands.literal("pose")
+                        .then(Commands.argument("pose", StringArgumentType.word())
+                                .suggests((c, builder) -> {
+                                    for (ChameleonPose p : ChameleonPose.VALUES) {
+                                        if (p.selectable()) {
+                                            builder.suggest(p.name().toLowerCase(Locale.ROOT));
+                                        }
+                                    }
+                                    return builder.buildFuture();
+                                })
+                                .then(Commands.argument("allowed", BoolArgumentType.bool())
+                                        .executes(ChameleonCommand::setPose)))));
     }
 
     private static int show(CommandContext<CommandSourceStack> ctx) {
         ctx.getSource().sendSuccess(() -> Component.literal(
                 "Chameleon: sendIntervalTicks=" + ChameleonConfig.sendIntervalTicks
-                        + ", saveIntervalTicks=" + ChameleonConfig.saveIntervalTicks), false);
+                        + ", saveIntervalTicks=" + ChameleonConfig.saveIntervalTicks
+                        + ", allowedPoses=[" + ChameleonConfig.allowedPosesString() + "]"), false);
         return 1;
+    }
+
+    private static int setPose(CommandContext<CommandSourceStack> ctx) {
+        ChameleonPose p = ChameleonPose.byName(StringArgumentType.getString(ctx, "pose"));
+        if (p == null || !p.selectable()) {
+            ctx.getSource().sendFailure(Component.literal("Unknown pose (use crouch / crawl / sit / lie)"));
+            return 0;
+        }
+        boolean allowed = BoolArgumentType.getBool(ctx, "allowed");
+        ChameleonConfig.setPoseAllowed(p, allowed);
+        ChameleonNetwork.broadcastConfig(ctx.getSource().getServer());
+        if (!allowed) {
+            ChameleonNetwork.clearDisallowedPoses(ctx.getSource().getServer()); // reset anyone using it
+        }
+        return report(ctx, "pose " + p.name().toLowerCase(Locale.ROOT) + " allowed=" + allowed
+                + " (now: [" + ChameleonConfig.allowedPosesString() + "])");
     }
 
     private static int report(CommandContext<CommandSourceStack> ctx, String msg) {

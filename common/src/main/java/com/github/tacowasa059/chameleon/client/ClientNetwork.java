@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 /**
  * Client-only outbound networking hook. Each loader installs a sender during
@@ -16,6 +17,8 @@ public final class ClientNetwork {
 
     private static Consumer<byte[]> sender = data -> {
     };
+    private static IntConsumer poseSender = id -> {
+    };
     private static BooleanSupplier modCheck = () -> false;
     private static boolean serverHasMod = false;
 
@@ -24,6 +27,18 @@ public final class ClientNetwork {
 
     public static void setSender(Consumer<byte[]> s) {
         sender = s;
+    }
+
+    public static void setPoseSender(IntConsumer s) {
+        poseSender = s;
+    }
+
+    /** Tell the server we chose a visual pose (only on a modded server). */
+    public static void sendPose(int poseId) {
+        if (Minecraft.getInstance().getConnection() == null || !serverHasMod) {
+            return;
+        }
+        poseSender.accept(poseId);
     }
 
     /** Loader-provided test for whether the connected server speaks our channel. */

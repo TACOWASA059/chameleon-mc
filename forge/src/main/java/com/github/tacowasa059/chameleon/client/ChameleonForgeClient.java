@@ -26,12 +26,18 @@ public final class ChameleonForgeClient {
                 ForgePackets.sendToServer(data);
             }
         });
+        ClientNetwork.setPoseSender(poseId -> {
+            if (ClientNetwork.serverHasMod()) {
+                ForgePackets.sendPoseToServer(poseId);
+            }
+        });
     }
 
     private static void onRegisterKeys(RegisterKeyMappingsEvent event) {
         event.register(ChameleonClient.OPEN_EDITOR);
         event.register(ChameleonClient.OPEN_INWORLD_PAINT);
         event.register(ChameleonClient.TOGGLE_GUIDE);
+        event.register(ChameleonClient.OPEN_POSE_WHEEL);
     }
 
     private static void onClientTick(TickEvent.ClientTickEvent event) {

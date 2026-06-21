@@ -8,8 +8,10 @@ Paint your pure-white body to blend into the scenery and hide from the seeker �
 - Supported version: **Minecraft 1.20.1**
 - Loaders: **Forge / Fabric** (Fabric requires **Fabric API**)
 
+
 ![image](figure/img.png)
 ![image](figure/img_1.png)
+![image](figure/img_2.png)
 ---
 
 ## Installation
@@ -112,6 +114,7 @@ Separate from the editor (`K`), this mode lets you **paint directly on your real
 
 - The left panel has the tools (Pen / Erase / Fill / Eyedropper), brush, mirror, 2nd layer, HSV picker, A/B and history.
 - **The eyedropper samples the colour shown on screen** (a nearby block, etc.). It corrects for the current lighting, so the painted body blends into the surface you sampled.
+- **Load default** … pull your real Minecraft skin into the canvas (a base to repaint from, or to revert toward).
 - **A/B colours and history are shared with the editor (`K`)** — a colour used in one shows up in the other, and both persist across restarts.
 
 ---
@@ -132,14 +135,29 @@ So your skin is **data that belongs to your client** — it follows you across r
 
 ---
 
+## Poses (camouflage stance)
+
+A **visual-only, synced** body stance to blend in (it does NOT change the hitbox or any real state).
+
+- Open the **pose wheel** with the **`R` key** (default).
+  - Centre = **Stand (clear)**, ring = the poses the server allows. Point with the mouse and **left-click** to pick; `Esc` to cancel.
+- Poses: **Crouch / Crawl / Sit / Lie down** (Stand is the default). Each shows a pictogram.
+- **Sneak (`shift`) clears the pose any time** (same feel as dismounting a horse).
+- Direct paint (`N`) paints on the body **in that pose**.
+- Rebind under `Options → Controls → Chameleon`.
+- Which poses are offered is set by the server config (`allowedPoses`, below).
+
+---
+
 ## Config
 
 `config/chameleon.properties` (auto-created on first launch) lets you tune the network debounce intervals. Values are in **ticks (20 ticks = 1 second, minimum 1)**.
 
 - `sendIntervalTicks` … client: minimum ticks between skin uploads while painting (default `10` ≈ 0.5s). **While connected to a server that has the mod, the server's value is used** (the local value is the fallback for singleplayer / non-mod servers).
 - `saveIntervalTicks` … server: ticks between batched skin saves to disk (default `100` ≈ 5s).
+- `allowedPoses` … which poses players may use (comma list of `crouch,crawl,sit,lie`; default all, empty = none).
 
-On a busy server, raise these to lower how often skins are sent / saved.
+On a busy server, raise the intervals to lower how often skins are sent / saved. Pose changes take effect live with `/chameleon reload` (**applied and pushed to all clients**).
 
 ### Commands (OP / permission level 2)
 
@@ -148,6 +166,7 @@ Change them at runtime on a server; the change is also written back to the confi
 - `/chameleon` … show the current values
 - `/chameleon saveinterval <ticks>` … set the server save interval
 - `/chameleon sendinterval <ticks>` … set the send interval (**pushed to all connected clients**)
+- `/chameleon pose <crouch|crawl|sit|lie> <true|false>` … allow/disallow a pose (live + pushed; disallowing also resets anyone using it)
 - `/chameleon reload` … re-read the config file
 
 ---

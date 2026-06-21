@@ -2,6 +2,7 @@ package com.github.tacowasa059.chameleon.net;
 
 import com.github.tacowasa059.chameleon.Constants;
 import com.github.tacowasa059.chameleon.client.ClientNetwork;
+import com.github.tacowasa059.chameleon.client.ClientPoses;
 import com.github.tacowasa059.chameleon.client.ClientSkins;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -36,6 +37,8 @@ public final class ForgePackets {
         CHANNEL.registerMessage(i++, UpdateSkinMsg.class, UpdateSkinMsg::encode, UpdateSkinMsg::decode, UpdateSkinMsg::handle);
         CHANNEL.registerMessage(i++, SyncSkinMsg.class, SyncSkinMsg::encode, SyncSkinMsg::decode, SyncSkinMsg::handle);
         CHANNEL.registerMessage(i++, SyncConfigMsg.class, SyncConfigMsg::encode, SyncConfigMsg::decode, SyncConfigMsg::handle);
+        CHANNEL.registerMessage(i++, SetPoseMsg.class, SetPoseMsg::encode, SetPoseMsg::decode, SetPoseMsg::handle);
+        CHANNEL.registerMessage(i++, SyncPoseMsg.class, SyncPoseMsg::encode, SyncPoseMsg::decode, SyncPoseMsg::handle);
     }
 
     public static void sendToServer(byte[] data) {
@@ -46,8 +49,16 @@ public final class ForgePackets {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncSkinMsg(owner, data));
     }
 
-    public static void sendConfigToPlayer(ServerPlayer player, int sendIntervalTicks) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncConfigMsg(sendIntervalTicks));
+    public static void sendConfigToPlayer(ServerPlayer player, int sendIntervalTicks, int allowedPoseMask) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncConfigMsg(sendIntervalTicks, allowedPoseMask));
+    }
+
+    public static void sendPoseToServer(int poseId) {
+        CHANNEL.send(PacketDistributor.SERVER.noArg(), new SetPoseMsg(poseId));
+    }
+
+    public static void sendPoseToPlayer(ServerPlayer player, UUID owner, int poseId) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncPoseMsg(owner, poseId));
     }
 
     /** Client -> Server: a freshly painted skin. */
@@ -100,26 +111,81 @@ public final class ForgePackets {
         }
     }
 
-    /** Server -> Client: the send interval the server wants clients to use. */
+    /** Server -> Client: the config the server wants clients to use. */
     public static final class SyncConfigMsg {
         final int sendIntervalTicks;
+        final int allowedPoseMask;
 
-        SyncConfigMsg(int sendIntervalTicks) {
+        SyncConfigMsg(int sendIntervalTicks, int allowedPoseMask) {
             this.sendIntervalTicks = sendIntervalTicks;
+            this.allowedPoseMask = allowedPoseMask;
         }
 
         static void encode(SyncConfigMsg m, FriendlyByteBuf b) {
             b.writeVarInt(m.sendIntervalTicks);
+            b.writeVarInt(m.allowedPoseMask);
         }
 
         static SyncConfigMsg decode(FriendlyByteBuf b) {
-            return new SyncConfigMsg(b.readVarInt());
+            return new SyncConfigMsg(b.readVarInt(), b.readVarInt());
         }
 
         static void handle(SyncConfigMsg m, Supplier<NetworkEvent.Context> ctxSup) {
             NetworkEvent.Context ctx = ctxSup.get();
+            ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+                ClientNetwork.applyServerSendInterval(m.sendIntervalTicks);
+                ClientPoses.setAllowed(m.allowedPoseMask);
+            }));
+            ctx.setPacketHandled(true);
+        }
+    }
+
+    /** Client -> Server: the player picked a visual pose. */
+    public static final class SetPoseMsg {
+        final int poseId;
+
+        SetPoseMsg(int poseId) {
+            this.poseId = poseId;
+        }
+
+        static void encode(SetPoseMsg m, FriendlyByteBuf b) {
+            b.writeVarInt(m.poseId);
+        }
+
+        static SetPoseMsg decode(FriendlyByteBuf b) {
+            return new SetPoseMsg(b.readVarInt());
+        }
+
+        static void handle(SetPoseMsg m, Supplier<NetworkEvent.Context> ctxSup) {
+            NetworkEvent.Context ctx = ctxSup.get();
+            ctx.enqueueWork(() -> ChameleonNetwork.serverReceivePose(ctx.getSender(), m.poseId));
+            ctx.setPacketHandled(true);
+        }
+    }
+
+    /** Server -> Client: an owner's chosen visual pose. */
+    public static final class SyncPoseMsg {
+        final UUID owner;
+        final int poseId;
+
+        SyncPoseMsg(UUID owner, int poseId) {
+            this.owner = owner;
+            this.poseId = poseId;
+        }
+
+        static void encode(SyncPoseMsg m, FriendlyByteBuf b) {
+            b.writeUUID(m.owner);
+            b.writeVarInt(m.poseId);
+        }
+
+        static SyncPoseMsg decode(FriendlyByteBuf b) {
+            return new SyncPoseMsg(b.readUUID(), b.readVarInt());
+        }
+
+        static void handle(SyncPoseMsg m, Supplier<NetworkEvent.Context> ctxSup) {
+            NetworkEvent.Context ctx = ctxSup.get();
             ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                    () -> () -> ClientNetwork.applyServerSendInterval(m.sendIntervalTicks)));
+                    () -> () -> ClientPoses.receive(m.owner, m.poseId)));
             ctx.setPacketHandled(true);
         }
     }
