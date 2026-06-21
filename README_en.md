@@ -18,8 +18,10 @@ Paint your pure-white body to blend into the scenery and hide from the seeker �
    - Forge: `chameleon-forge-1.20.1-<version>.jar`
    - Fabric: `chameleon-fabric-1.20.1-<version>.jar` + Fabric API
 2. Launch the game and enter a world / server.
-3. Open the skin editor with the **`K` key** (default).
-   - To rebind: `Options → Controls → Chameleon → Open Skin Editor`.
+3. Open a painter with a key (default) — there are two ways, use whichever you like.
+   - **`K`** … the skin editor (edit on a 3D model + 2D map)
+   - **`N`** … paint directly on your body in the world (see "In-world direct paint")
+   - Rebind under `Options → Controls → Chameleon`.
 
 ---
 
