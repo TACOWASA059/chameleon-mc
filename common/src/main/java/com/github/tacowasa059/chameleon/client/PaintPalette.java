@@ -33,7 +33,7 @@ public final class PaintPalette {
         color = color | 0xFF000000;
         COLORS.remove(color);
         COLORS.addFirst(color);
-        while (COLORS.size() > 10) {
+        while (COLORS.size() > 16) { // two rows of 8 in the panels
             COLORS.removeLast();
         }
     }

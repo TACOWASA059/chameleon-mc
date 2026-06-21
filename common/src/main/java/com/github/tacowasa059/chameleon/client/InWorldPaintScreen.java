@@ -38,6 +38,7 @@ public class InWorldPaintScreen extends Screen {
     private static final int TRANSPARENT = 0x00000000;
     private static final int PANEL = 128;
     private static final int UNDO_LIMIT = 40;
+    private static final int HIST_COLS = 8; // recent-colour swatches per row (wraps)
 
     private static final int T_PEN = 0, T_ERASER = 1, T_FILL = 2, T_PICK = 3;
     private static final String[] TOOL_KEYS = {"pen", "erase", "fill", "pick"};
@@ -65,6 +66,10 @@ public class InWorldPaintScreen extends Screen {
     private double lastX, lastY;
     private int hoverColor; // eyedropper: live screen colour under the cursor
     private static boolean showGuide = false; // G: overlay the cyan paint-guide wireframe
+
+    // Bookmarks (shared SkinBookmarks store) drawn inline in the panel.
+    private static final int BM_TILE = 18, BM_GAP = 2, BM_COLS = 4;
+    private int bmY; // top of the bookmark grid (set during draw, for hit-testing)
 
     private EditBox hexField;
     private boolean updatingHex;
@@ -284,14 +289,31 @@ public class InWorldPaintScreen extends Screen {
         drawSwatch(g, 4, swatchY, "A", PaintPalette.primary, PaintPalette.activeSwatch == 0);
         drawSwatch(g, 64, swatchY, "B", PaintPalette.secondary, PaintPalette.activeSwatch == 1);
 
-        // recent colours
+        // recent colours (wraps so all fit in the panel)
         int hisY = swatchY + 38;
         int i = 0;
         for (Integer c : history) {
-            int hx = 4 + i * 15;
-            g.fill(hx, hisY, hx + 13, hisY + 13, c | 0xFF000000);
-            g.renderOutline(hx, hisY, 13, 13, 0xFF000000);
+            int hx = 4 + (i % HIST_COLS) * 15;
+            int hy = hisY + (i / HIST_COLS) * 15;
+            g.fill(hx, hy, hx + 13, hy + 13, c | 0xFF000000);
+            g.renderOutline(hx, hy, 13, 13, 0xFF000000);
             i++;
+        }
+
+        // bookmarks (shared with the editor): inline thumbnail grid, no popup
+        int hisRows = Math.max(1, (history.size() + HIST_COLS - 1) / HIST_COLS);
+        bmY = hisY + hisRows * 15 + 14;
+        g.drawString(this.font, Component.translatable("editor.chameleon.bookmarks"), 6, bmY - 10, 0xFFBBBBBB, false);
+        for (int s = 0; s < SkinBookmarks.SLOTS; s++) {
+            int tx = 4 + (s % BM_COLS) * (BM_TILE + BM_GAP);
+            int ty = bmY + (s / BM_COLS) * (BM_TILE + BM_GAP);
+            g.fill(tx, ty, tx + BM_TILE, ty + BM_TILE, 0xFF24242C);
+            if (SkinBookmarks.has(s)) {
+                SkinThumbnail.render(g, SkinBookmarks.get(s), SkinBookmarks.texture(s), tx, ty, BM_TILE);
+            } else {
+                g.drawCenteredString(this.font, "+", tx + BM_TILE / 2, ty + BM_TILE / 2 - 4, 0xFF55555C);
+            }
+            g.renderOutline(tx, ty, BM_TILE, BM_TILE, 0xFF000000);
         }
     }
 
@@ -329,7 +351,7 @@ public class InWorldPaintScreen extends Screen {
                 setColor(picker.getArgb(), false);
                 return true;
             }
-            return handlePanelClick(mx, my);
+            return handlePanelClick(mx, my, button);
         }
 
         // on the body / world
@@ -436,7 +458,7 @@ public class InWorldPaintScreen extends Screen {
         return super.keyPressed(key, scancode, mods);
     }
 
-    private boolean handlePanelClick(double mx, double my) {
+    private boolean handlePanelClick(double mx, double my, int button) {
         for (int i = 0; i < TOOL_KEYS.length; i++) {
             int rx = 6 + (i % 2) * 60;
             int ry = toolsY + (i / 2) * 20;
@@ -477,11 +499,26 @@ public class InWorldPaintScreen extends Screen {
         int hisY = swatchY + 38;
         int i = 0;
         for (Integer c : history) {
-            if (in(mx, my, 4 + i * 15, hisY, 13, 13)) {
+            int hx = 4 + (i % HIST_COLS) * 15;
+            int hy = hisY + (i / HIST_COLS) * 15;
+            if (in(mx, my, hx, hy, 13, 13)) {
                 setColor(c, true);
                 return true;
             }
             i++;
+        }
+        // bookmarks (inline grid: left = load, right / empty = save current)
+        for (int s = 0; s < SkinBookmarks.SLOTS; s++) {
+            int tx = 4 + (s % BM_COLS) * (BM_TILE + BM_GAP);
+            int ty = bmY + (s / BM_COLS) * (BM_TILE + BM_GAP);
+            if (in(mx, my, tx, ty, BM_TILE, BM_TILE)) {
+                if (button == 1 || !SkinBookmarks.has(s)) {
+                    SkinBookmarks.set(s, new ChameleonSkin(pixels.clone(), slim));
+                } else {
+                    loadBookmark(s);
+                }
+                return true;
+            }
         }
         return true; // swallow clicks anywhere on the panel
     }
@@ -667,6 +704,20 @@ public class InWorldPaintScreen extends Screen {
             Constants.LOG.warn("Failed to read default skin texture: {}", e.toString());
             return null;
         }
+    }
+
+    private void loadBookmark(int slot) {
+        ChameleonSkin s = SkinBookmarks.get(slot);
+        if (s == null) {
+            return;
+        }
+        snapshot();
+        System.arraycopy(s.raw(), 0, pixels, 0, pixels.length);
+        if (s.slim() != slim) {
+            slim = s.slim();
+            geo = new SkinGeometry(slim);
+        }
+        syncSkin();
     }
 
     private static boolean in(double mx, double my, int x, int y, int w, int h) {

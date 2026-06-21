@@ -365,22 +365,22 @@ public class SkinEditorScreen extends Screen {
         int swY = 22 + picker.height() + 4 + 14 + 4;
         drawSwatch(g, px, swY, "A", PaintPalette.primary, PaintPalette.activeSwatch == 0);
         drawSwatch(g, px + 62, swY, "B", PaintPalette.secondary, PaintPalette.activeSwatch == 1);
-        // recent color history
+        // recent color history (wraps to extra rows so all colours fit the panel)
         int hisY = swY + 28;
         g.drawString(this.font, Component.translatable("editor.chameleon.history"), px, hisY - 9, 0xFF999999, false);
+        int hisCols = 8;
         int i = 0;
         for (Integer c : history) {
-            if (i >= 8) {
-                break;
-            }
-            int rx = px + i * 15;
-            g.fill(rx, hisY, rx + 13, hisY + 13, c);
-            g.renderOutline(rx, hisY, 13, 13, 0xFF000000);
+            int rx = px + (i % hisCols) * 15;
+            int ry = hisY + (i / hisCols) * 15;
+            g.fill(rx, ry, rx + 13, ry + 13, c);
+            g.renderOutline(rx, ry, 13, 13, 0xFF000000);
             i++;
         }
+        int hisRows = Math.max(1, (history.size() + hisCols - 1) / hisCols);
         // bookmarks: inline grid of 3D skin thumbnails. Left-click load,
         // right-click / empty slot = save current.
-        bmY = hisY + 26;
+        bmY = hisY + (hisRows - 1) * 15 + 26;
         g.drawString(this.font, Component.translatable("editor.chameleon.bookmarks"), px, bmY - 9, 0xFF999999, false);
         for (int s = 0; s < SkinBookmarks.SLOTS; s++) {
             int tx = px + (s % BM_COLS) * (BM_TILE + BM_GAP);
@@ -949,13 +949,12 @@ public class SkinEditorScreen extends Screen {
         int px = this.width - RW + 4;
         int swY = 22 + picker.height() + 4 + 14 + 4;
         int hisY = swY + 28;
+        int hisCols = 8;
         int i = 0;
         for (Integer c : history) {
-            if (i >= 8) {
-                break;
-            }
-            int rx = px + i * 15;
-            if (in(mx, my, rx, hisY, 13, 13)) {
+            int rx = px + (i % hisCols) * 15;
+            int ry = hisY + (i / hisCols) * 15;
+            if (in(mx, my, rx, ry, 13, 13)) {
                 setActiveColor(c);
                 return true;
             }

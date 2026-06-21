@@ -23,6 +23,7 @@ Paint your pure-white body to blend into the scenery and hide from the seeker �
 3. Open a painter with a key (default) — there are two ways, use whichever you like.
    - **`K`** … the skin editor (edit on a 3D model + 2D map)
    - **`N`** … paint directly on your body in the world (see "In-world direct paint")
+   - **`R`** … the pose wheel (camouflage stances; see "Poses")
    - Rebind under `Options → Controls → Chameleon`.
 
 ---
@@ -115,6 +116,7 @@ Separate from the editor (`K`), this mode lets you **paint directly on your real
 - The left panel has the tools (Pen / Erase / Fill / Eyedropper), brush, mirror, 2nd layer, HSV picker, A/B and history.
 - **The eyedropper samples the colour shown on screen** (a nearby block, etc.). It corrects for the current lighting, so the painted body blends into the surface you sampled.
 - **Load default** … pull your real Minecraft skin into the canvas (a base to repaint from, or to revert toward).
+- **Bookmarks** … save slots (3D thumbnails) shown inline in the left panel, **shared with the editor (`K`)** (left-click = load, right-click / empty = save current).
 - **A/B colours and history are shared with the editor (`K`)** — a colour used in one shows up in the other, and both persist across restarts.
 
 ---
