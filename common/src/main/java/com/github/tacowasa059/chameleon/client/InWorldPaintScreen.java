@@ -92,6 +92,9 @@ public class InWorldPaintScreen extends Screen {
 
     @Override
     protected void init() {
+        if (tool == T_PICK && !ClientNetwork.isEyedropperEnabled()) {
+            tool = T_PEN; // server disallows the eyedropper -> don't reopen on it (tool is static)
+        }
         toolsY = 24;
         brushY = toolsY + 2 * 20 + 8;
         optsY = brushY + 14 + 8;
@@ -269,8 +272,12 @@ public class InWorldPaintScreen extends Screen {
         for (int i = 0; i < TOOL_KEYS.length; i++) {
             int rx = 6 + (i % 2) * 60;
             int ry = toolsY + (i / 2) * 20;
-            cell(g, rx, ry, 58, 18,
-                    Component.translatable("editor.chameleon.tool." + TOOL_KEYS[i]).getString(), tool == i);
+            String label = Component.translatable("editor.chameleon.tool." + TOOL_KEYS[i]).getString();
+            if (i == T_PICK && !ClientNetwork.isEyedropperEnabled()) {
+                cellDisabled(g, rx, ry, 58, 18, label); // server disabled the eyedropper
+            } else {
+                cell(g, rx, ry, 58, 18, label, tool == i);
+            }
         }
         g.drawString(this.font, Component.translatable("editor.chameleon.brush"), 6, brushY - 10, 0xFFBBBBBB, false);
         for (int i = 0; i < 3; i++) {
@@ -323,6 +330,13 @@ public class InWorldPaintScreen extends Screen {
         g.drawCenteredString(this.font, label, x + w / 2, y + (h - 8) / 2, 0xFFFFFFFF);
     }
 
+    /** A greyed-out, unclickable tool cell (used when the server disables a tool). */
+    private void cellDisabled(GuiGraphics g, int x, int y, int w, int h, String label) {
+        g.fill(x, y, x + w, y + h, 0xFF1C1C20);
+        g.renderOutline(x, y, w, h, 0xFF000000);
+        g.drawCenteredString(this.font, label, x + w / 2, y + (h - 8) / 2, 0xFF666666);
+    }
+
     private void miniToggle(GuiGraphics g, int x, int y, int w, int h, String label, boolean on) {
         g.fill(x, y, x + w, y + h, on ? 0xFF2E7D32 : 0xFF3A2A2A);
         g.renderOutline(x, y, w, h, 0xFF000000);
@@ -363,6 +377,10 @@ public class InWorldPaintScreen extends Screen {
             return false;
         }
         if (tool == T_PICK) {
+            if (!ClientNetwork.isEyedropperEnabled()) {
+                tool = T_PEN; // server disabled the eyedropper mid-session -> fall back
+                return true;
+            }
             // Sample the on-screen colour anywhere (the world, a block, your body),
             // corrected for the current light so the painted skin reproduces it.
             int c = hoverColor != 0 ? hoverColor : compensateLight(ScreenColor.readPixel(mx, my));
@@ -463,6 +481,9 @@ public class InWorldPaintScreen extends Screen {
             int rx = 6 + (i % 2) * 60;
             int ry = toolsY + (i / 2) * 20;
             if (in(mx, my, rx, ry, 58, 18)) {
+                if (i == T_PICK && !ClientNetwork.isEyedropperEnabled()) {
+                    return true; // eyedropper disabled by the server
+                }
                 if (i == T_PICK && tool != T_PICK) {
                     prevTool = tool; // remember where to return after the eyedrop
                 }

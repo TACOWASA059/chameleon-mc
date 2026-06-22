@@ -65,7 +65,8 @@ public final class ChameleonNetwork {
 
     /** Called when a player joins: hand them the config and every known skin + pose. */
     public static void onPlayerJoin(ServerPlayer player) {
-        Services.NETWORK.sendConfigToClient(player, ChameleonConfig.sendIntervalTicks, ChameleonConfig.allowedPoseMask);
+        Services.NETWORK.sendConfigToClient(player, ChameleonConfig.sendIntervalTicks,
+                ChameleonConfig.allowedPoseMask, ChameleonConfig.enableEyedropper);
         for (Map.Entry<UUID, byte[]> e : SkinStore.all().entrySet()) {
             Services.NETWORK.sendSkinToClient(player, e.getKey(), e.getValue());
         }
@@ -77,7 +78,8 @@ public final class ChameleonNetwork {
     /** Push the current config (send interval + allowed poses) to every client. */
     public static void broadcastConfig(MinecraftServer server) {
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-            Services.NETWORK.sendConfigToClient(p, ChameleonConfig.sendIntervalTicks, ChameleonConfig.allowedPoseMask);
+            Services.NETWORK.sendConfigToClient(p, ChameleonConfig.sendIntervalTicks,
+                    ChameleonConfig.allowedPoseMask, ChameleonConfig.enableEyedropper);
         }
     }
 

@@ -49,9 +49,11 @@ public class ChameleonFabricClient implements ClientModInitializer {
                 (client, handler, buf, responseSender) -> {
                     int interval = buf.readVarInt();
                     int mask = buf.readVarInt();
+                    boolean eyedropper = buf.readBoolean();
                     client.execute(() -> {
                         ClientNetwork.applyServerSendInterval(interval);
                         ClientPoses.setAllowed(mask);
+                        ClientNetwork.applyEyedropperEnabled(eyedropper);
                     });
                 });
 

@@ -21,6 +21,7 @@ import java.util.Locale;
  *   <li>{@code /chameleon} -- show the current values</li>
  *   <li>{@code /chameleon saveinterval <ticks>} -- set the server save interval</li>
  *   <li>{@code /chameleon sendinterval <ticks>} -- set the client send interval</li>
+ *   <li>{@code /chameleon eyedropper <true|false>} -- allow/disallow the client eyedropper tool</li>
  *   <li>{@code /chameleon reload} -- re-read the config file</li>
  * </ul>
  */
@@ -57,6 +58,16 @@ public final class ChameleonCommand {
                             return report(ctx, "Chameleon config reloaded (saveIntervalTicks="
                                     + ChameleonConfig.saveIntervalTicks + ", allowedPoses pushed)");
                         }))
+                .then(Commands.literal("eyedropper")
+                        .then(Commands.argument("enabled", BoolArgumentType.bool())
+                                .executes(ctx -> {
+                                    boolean enabled = BoolArgumentType.getBool(ctx, "enabled");
+                                    ChameleonConfig.setEyedropperEnabled(enabled);
+                                    // Push it to every connected client so they apply it immediately.
+                                    ChameleonNetwork.broadcastConfig(ctx.getSource().getServer());
+                                    return report(ctx, "enableEyedropper set to " + enabled
+                                            + " (pushed to all clients)");
+                                })))
                 .then(Commands.literal("pose")
                         .then(Commands.argument("pose", StringArgumentType.word())
                                 .suggests((c, builder) -> {
@@ -75,7 +86,8 @@ public final class ChameleonCommand {
         ctx.getSource().sendSuccess(() -> Component.literal(
                 "Chameleon: sendIntervalTicks=" + ChameleonConfig.sendIntervalTicks
                         + ", saveIntervalTicks=" + ChameleonConfig.saveIntervalTicks
-                        + ", allowedPoses=[" + ChameleonConfig.allowedPosesString() + "]"), false);
+                        + ", allowedPoses=[" + ChameleonConfig.allowedPosesString() + "]"
+                        + ", enableEyedropper=" + ChameleonConfig.enableEyedropper), false);
         return 1;
     }
 

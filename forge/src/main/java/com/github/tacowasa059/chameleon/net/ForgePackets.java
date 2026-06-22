@@ -49,8 +49,8 @@ public final class ForgePackets {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncSkinMsg(owner, data));
     }
 
-    public static void sendConfigToPlayer(ServerPlayer player, int sendIntervalTicks, int allowedPoseMask) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncConfigMsg(sendIntervalTicks, allowedPoseMask));
+    public static void sendConfigToPlayer(ServerPlayer player, int sendIntervalTicks, int allowedPoseMask, boolean enableEyedropper) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncConfigMsg(sendIntervalTicks, allowedPoseMask, enableEyedropper));
     }
 
     public static void sendPoseToServer(int poseId) {
@@ -115,19 +115,22 @@ public final class ForgePackets {
     public static final class SyncConfigMsg {
         final int sendIntervalTicks;
         final int allowedPoseMask;
+        final boolean enableEyedropper;
 
-        SyncConfigMsg(int sendIntervalTicks, int allowedPoseMask) {
+        SyncConfigMsg(int sendIntervalTicks, int allowedPoseMask, boolean enableEyedropper) {
             this.sendIntervalTicks = sendIntervalTicks;
             this.allowedPoseMask = allowedPoseMask;
+            this.enableEyedropper = enableEyedropper;
         }
 
         static void encode(SyncConfigMsg m, FriendlyByteBuf b) {
             b.writeVarInt(m.sendIntervalTicks);
             b.writeVarInt(m.allowedPoseMask);
+            b.writeBoolean(m.enableEyedropper);
         }
 
         static SyncConfigMsg decode(FriendlyByteBuf b) {
-            return new SyncConfigMsg(b.readVarInt(), b.readVarInt());
+            return new SyncConfigMsg(b.readVarInt(), b.readVarInt(), b.readBoolean());
         }
 
         static void handle(SyncConfigMsg m, Supplier<NetworkEvent.Context> ctxSup) {
@@ -135,6 +138,7 @@ public final class ForgePackets {
             ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
                 ClientNetwork.applyServerSendInterval(m.sendIntervalTicks);
                 ClientPoses.setAllowed(m.allowedPoseMask);
+                ClientNetwork.applyEyedropperEnabled(m.enableEyedropper);
             }));
             ctx.setPacketHandled(true);
         }

@@ -300,7 +300,12 @@ public class SkinEditorScreen extends Screen {
         for (int i = 0; i < 8; i++) {
             int rx = 8 + (i % 2) * 50;
             int ry = toolsY + (i / 2) * 20;
-            cell(g, rx, ry, 48, 18, Component.translatable("editor.chameleon.tool." + TOOL_KEYS[i]).getString(), tool == i);
+            String label = Component.translatable("editor.chameleon.tool." + TOOL_KEYS[i]).getString();
+            if (i == T_PICK && !ClientNetwork.isEyedropperEnabled()) {
+                cellDisabled(g, rx, ry, 48, 18, label); // server disabled the eyedropper
+            } else {
+                cell(g, rx, ry, 48, 18, label, tool == i);
+            }
         }
         g.drawString(this.font, Component.translatable("editor.chameleon.brush"), 8, brushY - 10, 0xFFBBBBBB, false);
         for (int i = 0; i < 3; i++) {
@@ -399,6 +404,13 @@ public class SkinEditorScreen extends Screen {
         g.fill(x, y, x + w, y + h, sel ? 0xFF3A6EA5 : 0xFF2A2A30);
         g.renderOutline(x, y, w, h, sel ? 0xFFFFD040 : 0xFF000000);
         g.drawCenteredString(this.font, label, x + w / 2, y + (h - 8) / 2, 0xFFFFFFFF);
+    }
+
+    /** A greyed-out, unclickable tool cell (used when the server disables a tool). */
+    private void cellDisabled(GuiGraphics g, int x, int y, int w, int h, String label) {
+        g.fill(x, y, x + w, y + h, 0xFF1C1C20);
+        g.renderOutline(x, y, w, h, 0xFF000000);
+        g.drawCenteredString(this.font, label, x + w / 2, y + (h - 8) / 2, 0xFF666666);
     }
 
     private void miniToggle(GuiGraphics g, int x, int y, int w, int h, String label, boolean on) {
@@ -631,6 +643,9 @@ public class SkinEditorScreen extends Screen {
         refreshLayerView();
         lastMouseX = mx;
         lastMouseY = my;
+        if (tool == T_PICK && !ClientNetwork.isEyedropperEnabled()) {
+            tool = T_PEN; // server disabled the eyedropper -> fall back before any pick runs
+        }
 
         if (button == 0 && picker.mouseDown(mx, my)) {
             pickerActive = true;
@@ -847,6 +862,9 @@ public class SkinEditorScreen extends Screen {
             int rx = 8 + (i % 2) * 50;
             int ry = toolsY + (i / 2) * 20;
             if (in(mx, my, rx, ry, 48, 18)) {
+                if (i == T_PICK && !ClientNetwork.isEyedropperEnabled()) {
+                    return true; // eyedropper disabled by the server
+                }
                 if (i == T_PICK && tool != T_PICK) {
                     prevTool = tool; // remember where to return after the eyedrop
                 }

@@ -21,6 +21,9 @@ public final class ClientNetwork {
     };
     private static BooleanSupplier modCheck = () -> false;
     private static boolean serverHasMod = false;
+    // Server-controlled feature gate, synced via SYNC_CONFIG. Defaults to enabled so the
+    // editor stays fully usable offline / on servers without the mod.
+    private static boolean eyedropperEnabled = true;
 
     private ClientNetwork() {
     }
@@ -83,6 +86,16 @@ public final class ClientNetwork {
     /** The connected server told us which send interval to use (takes precedence). */
     public static void applyServerSendInterval(int ticks) {
         serverSendInterval = Math.max(1, ticks);
+    }
+
+    /** The connected server told us whether the eyedropper tool is allowed. */
+    public static void applyEyedropperEnabled(boolean enabled) {
+        eyedropperEnabled = enabled;
+    }
+
+    /** Whether the eyedropper (colour-pick) tool may be used (server-controlled). */
+    public static boolean isEyedropperEnabled() {
+        return eyedropperEnabled;
     }
 
     /** Per client tick: send the queued skin at most once per interval. */

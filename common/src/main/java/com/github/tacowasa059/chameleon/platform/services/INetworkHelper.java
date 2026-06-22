@@ -19,8 +19,8 @@ public interface INetworkHelper {
     /** Broadcast an owner's skin to every connected client. */
     void broadcastSkin(MinecraftServer server, UUID owner, byte[] skinData);
 
-    /** Tell one client the config it should use (send interval + allowed-pose mask). */
-    void sendConfigToClient(ServerPlayer target, int sendIntervalTicks, int allowedPoseMask);
+    /** Tell one client the config it should use (send interval + allowed-pose mask + eyedropper). */
+    void sendConfigToClient(ServerPlayer target, int sendIntervalTicks, int allowedPoseMask, boolean enableEyedropper);
 
     /** Tell one client an owner's chosen visual pose (by ordinal). */
     void sendPoseToClient(ServerPlayer target, UUID owner, int poseId);

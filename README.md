@@ -153,8 +153,9 @@
 - `sendIntervalTicks` … クライアントがペイント中にスキンを送る最小間隔（既定 `10` ＝約0.5秒）。**Mod入りサーバーに接続中はサーバー側の値が適用**されます（ローカル値はシングルプレイ／非Mod時のフォールバック）。
 - `saveIntervalTicks` … サーバーがスキンをまとめてディスク保存する間隔（既定 `100` ＝約5秒）。
 - `allowedPoses` … プレイヤーが使えるポーズ（`crouch,crawl,sit,lie` をカンマ区切り。既定は全部、空で無効）。
+- `enableEyedropper` … クライアントのスポイト（色拾い）ツールを使えるか（`true`/`false`、既定 `true`）。`false` にするとエディタ／直接ペイントの両方でスポイトがグレーアウトし選択できません。
 
-大人数サーバーで負荷を下げたい時は、間隔を大きくすると送信・保存の頻度が下がります。ポーズ設定は `/chameleon reload` で**即時反映＆全クライアントへ配布**されます。
+大人数サーバーで負荷を下げたい時は、間隔を大きくすると送信・保存の頻度が下がります。設定は `/chameleon reload` で**即時反映＆全クライアントへ配布**されます。
 
 ### コマンド（OP / 権限レベル2）
 
@@ -164,6 +165,7 @@
 - `/chameleon saveinterval <tick>` … サーバーのセーブ間隔を設定
 - `/chameleon sendinterval <tick>` … 送信間隔を設定（**接続中の全クライアントへ即時配布**）
 - `/chameleon pose <crouch｜crawl｜sit｜lie> <true｜false>` … 各ポーズの許可/禁止を切替（即時反映＆配布。禁止にすると使用中のプレイヤーも立ちへ戻る）
+- `/chameleon eyedropper <true｜false>` … スポイトツールの使用許可を切替（即時反映＆全クライアントへ配布）
 - `/chameleon reload` … config ファイルを読み直す
 
 ---

@@ -158,8 +158,9 @@ A **visual-only, synced** body stance to blend in (it does NOT change the hitbox
 - `sendIntervalTicks` … client: minimum ticks between skin uploads while painting (default `10` ≈ 0.5s). **While connected to a server that has the mod, the server's value is used** (the local value is the fallback for singleplayer / non-mod servers).
 - `saveIntervalTicks` … server: ticks between batched skin saves to disk (default `100` ≈ 5s).
 - `allowedPoses` … which poses players may use (comma list of `crouch,crawl,sit,lie`; default all, empty = none).
+- `enableEyedropper` … whether clients may use the eyedropper (color-pick) tool (`true`/`false`, default `true`). When `false`, the eyedropper is greyed out and unselectable in both the editor and in-world paint.
 
-On a busy server, raise the intervals to lower how often skins are sent / saved. Pose changes take effect live with `/chameleon reload` (**applied and pushed to all clients**).
+On a busy server, raise the intervals to lower how often skins are sent / saved. Config changes take effect live with `/chameleon reload` (**applied and pushed to all clients**).
 
 ### Commands (OP / permission level 2)
 
@@ -169,6 +170,7 @@ Change them at runtime on a server; the change is also written back to the confi
 - `/chameleon saveinterval <ticks>` … set the server save interval
 - `/chameleon sendinterval <ticks>` … set the send interval (**pushed to all connected clients**)
 - `/chameleon pose <crouch|crawl|sit|lie> <true|false>` … allow/disallow a pose (live + pushed; disallowing also resets anyone using it)
+- `/chameleon eyedropper <true|false>` … allow/disallow the eyedropper tool (live + pushed to all clients)
 - `/chameleon reload` … re-read the config file
 
 ---

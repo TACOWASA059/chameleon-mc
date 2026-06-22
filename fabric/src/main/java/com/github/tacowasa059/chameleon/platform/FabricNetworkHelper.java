@@ -28,10 +28,11 @@ public class FabricNetworkHelper implements INetworkHelper {
     }
 
     @Override
-    public void sendConfigToClient(ServerPlayer target, int sendIntervalTicks, int allowedPoseMask) {
+    public void sendConfigToClient(ServerPlayer target, int sendIntervalTicks, int allowedPoseMask, boolean enableEyedropper) {
         FriendlyByteBuf buf = PacketByteBufs.create();
         buf.writeVarInt(sendIntervalTicks);
         buf.writeVarInt(allowedPoseMask);
+        buf.writeBoolean(enableEyedropper);
         ServerPlayNetworking.send(target, ChameleonNetwork.SYNC_CONFIG, buf);
     }
 

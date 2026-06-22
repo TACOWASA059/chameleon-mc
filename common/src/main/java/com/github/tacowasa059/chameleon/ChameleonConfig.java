@@ -24,6 +24,8 @@ public final class ChameleonConfig {
     public static int saveIntervalTicks = 100;  // ~5s
     /** Server: which selectable poses players may use (bitmask of ChameleonPose). */
     public static int allowedPoseMask = ChameleonPose.defaultMask();
+    /** Server: whether clients may use the eyedropper (colour-pick) tool. */
+    public static boolean enableEyedropper = true;
 
     private static boolean loaded;
 
@@ -61,6 +63,7 @@ public final class ChameleonConfig {
             sendIntervalTicks = readInt(props, "sendIntervalTicks", sendIntervalTicks);
             saveIntervalTicks = readInt(props, "saveIntervalTicks", saveIntervalTicks);
             allowedPoseMask = readPoseMask(props, "allowedPoses", allowedPoseMask);
+            enableEyedropper = readBoolean(props, "enableEyedropper", enableEyedropper);
         } catch (Exception e) {
             Constants.LOG.warn("Failed to load chameleon config, using current values: {}", e.toString());
         }
@@ -91,6 +94,12 @@ public final class ChameleonConfig {
         save();
     }
 
+    /** Enable or disable the client eyedropper tool and persist (used by the command). */
+    public static void setEyedropperEnabled(boolean enabled) {
+        enableEyedropper = enabled;
+        save();
+    }
+
     /** The currently-allowed poses as a comma list (for the command's readout). */
     public static String allowedPosesString() {
         return formatPoseMask(allowedPoseMask);
@@ -104,6 +113,14 @@ public final class ChameleonConfig {
             } catch (NumberFormatException ignored) {
                 // fall through to default
             }
+        }
+        return def;
+    }
+
+    private static boolean readBoolean(Properties props, String key, boolean def) {
+        String v = props.getProperty(key);
+        if (v != null) {
+            return Boolean.parseBoolean(v.trim());
         }
         return def;
     }
@@ -147,11 +164,13 @@ public final class ChameleonConfig {
             props.setProperty("sendIntervalTicks", Integer.toString(sendIntervalTicks));
             props.setProperty("saveIntervalTicks", Integer.toString(saveIntervalTicks));
             props.setProperty("allowedPoses", formatPoseMask(allowedPoseMask));
+            props.setProperty("enableEyedropper", Boolean.toString(enableEyedropper));
             try (OutputStream out = Files.newOutputStream(p)) {
                 props.store(out, "Chameleon config. Intervals in ticks (20 ticks = 1 second, minimum 1).\n"
                         + "sendIntervalTicks: client - min ticks between skin uploads while painting.\n"
                         + "saveIntervalTicks: server - ticks between batched skin saves to disk.\n"
-                        + "allowedPoses: comma list of poses players may use (crouch,crawl,sit,lie).");
+                        + "allowedPoses: comma list of poses players may use (crouch,crawl,sit,lie).\n"
+                        + "enableEyedropper: whether clients may use the eyedropper (colour-pick) tool (true/false).");
             }
         } catch (Exception e) {
             Constants.LOG.warn("Failed to write chameleon config: {}", e.toString());

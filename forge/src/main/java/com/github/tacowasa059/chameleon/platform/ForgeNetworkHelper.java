@@ -25,8 +25,8 @@ public class ForgeNetworkHelper implements INetworkHelper {
     }
 
     @Override
-    public void sendConfigToClient(ServerPlayer target, int sendIntervalTicks, int allowedPoseMask) {
-        ForgePackets.sendConfigToPlayer(target, sendIntervalTicks, allowedPoseMask);
+    public void sendConfigToClient(ServerPlayer target, int sendIntervalTicks, int allowedPoseMask, boolean enableEyedropper) {
+        ForgePackets.sendConfigToPlayer(target, sendIntervalTicks, allowedPoseMask, enableEyedropper);
     }
 
     @Override
