@@ -1,0 +1,47 @@
+name: Build & Release
+
+# Builds the Forge & Fabric jars and attaches them to a GitHub Release
+# whenever a tag like v1.0.0 is pushed.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # needed to create the release and upload assets
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build --no-daemon --stacktrace
+
+      - name: Collect release jars
+        run: |
+          mkdir -p release
+          find forge/build/libs fabric/build/libs -maxdepth 1 -name '*.jar' \
+            ! -name '*-sources.jar' ! -name '*-javadoc.jar' -exec cp -v {} release/ \;
+          echo "Collected:"
+          ls -l release
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.jar
+          fail_on_unmatched_files: true
+          generate_release_notes: true
